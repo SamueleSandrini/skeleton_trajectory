@@ -3,9 +3,9 @@
   <arg name="kalmanBase" default="true"/>
 
 
-  <node name="nodoSubscriberRealsense" pkg="skeleton_trajectory" type="mainRealSense.py"  output="screen" />
-  <node unless="$(arg kalmanBase)" name="KalmanLimbs" pkg="skeleton_trajectory" type="mainKalmanLimbs.py"  output="screen" />
-  <node if="$(arg kalmanBase)" name="Kalman" pkg="skeleton_trajectory" type="mainKalman.py"  output="screen" />
+  <node name="Acquisition_Identification" pkg="skeleton_trajectory" type="mainRealSense.py"  output="screen" />
+  <node unless="$(arg kalmanBase)" name="Kinematic_Kalman" pkg="skeleton_trajectory" type="mainKalmanLimbs.py"  output="screen" />
+  <node if="$(arg kalmanBase)" name="Indipendent_Kalman" pkg="skeleton_trajectory" type="mainKalman.py"  output="screen" />
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find skeleton_trajectory)/config/cameraVisualSettingsSkeleton.rviz" />
 
 </launch>

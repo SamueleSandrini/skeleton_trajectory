@@ -4,8 +4,8 @@ import rospy
 from KeypointsFilter import KeypointsFilter
 
 def main():
-    rospy.init_node("Kalman",anonymous=True)
-    print("Base")
+    rospy.init_node("Indipendent_Kalman",anonymous=True)
+    print("Indipendent_Kalman")
     keypointsFilter=KeypointsFilter()
     keypointsFilter.subAndFilter()
 

@@ -4,8 +4,8 @@ import rospy
 from KeypointsAdvancedFiltering import KeypointsAdvancedFiltering
 
 def main():
-    rospy.init_node("KalmanLimbs",anonymous=True)
-    print("Limbs")
+    rospy.init_node("Kinematic_Kalman",anonymous=True)
+    print("Kinematic_Kalman")
     keypointsFilter=KeypointsAdvancedFiltering()
     keypointsFilter.subAndFilter()
 

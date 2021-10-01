@@ -13,7 +13,7 @@ def my_hook():
 
 def main():
     # Subscriber node
-        rospy.init_node("nodoSubscriberRealsense",anonymous=True)
+        rospy.init_node("Acquisition_Identification",anonymous=True)
 
         #Realsense object to menage acquisition
         realsense=RealSense()
