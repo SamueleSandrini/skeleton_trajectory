@@ -175,7 +175,7 @@ class KeypointsAdvancedFiltering():
             self.marker.id = idKeypoint
             self.marker.pose = Pose(Point(yFiltered[0],yFiltered[1],yFiltered[2]),Quaternion(0,0,0,1))
 
-            self.pubMarkerFiltered.publish(self.marker)
+            #self.pubMarkerFiltered.publish(self.marker)
 
 
             self.listOfIndexesPres.append(idKeypoint)
@@ -190,7 +190,7 @@ class KeypointsAdvancedFiltering():
                 #Populate message
                 self.marker.id = idKeypointNotDetected
                 self.marker.pose = Pose(Point(yModel[0],yModel[1],yModel[2]),Quaternion(0,0,0,1))
-                self.pubMarkerFiltered.publish(self.marker)
+                #self.pubMarkerFiltered.publish(self.marker)
                 self.listOfIndexesPres.append(idKeypointNotDetected)
                 self.listKeypoints.append(self.marker.pose)
                 print("Keypoint number: {} is in open Loop".format(idKeypointNotDetected))
@@ -477,6 +477,14 @@ class KeypointsAdvancedFiltering():
                  self.skeleton.points.append(self.listKeypoints[index_end].position)
                  n+=1
         self.pubSkeletonFiltered.publish(self.skeleton)
+
+        n=0
+        for keyp in self.listKeypoints:
+            self.marker.header.stamp = rospy.Time.now()
+            self.marker.id = self.listOfIndexesPres[n]
+            self.marker.pose = keyp
+            self.pubMarkerFiltered.publish(self.marker)
+            n+=1
 
         #Reset presences when one skeleton is completed
         self.listOfIndexesPres = []

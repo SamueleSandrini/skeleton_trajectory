@@ -21,11 +21,11 @@ class KalmanFilter():
         self.C = np.zeros((N_MEASURE, N_STATES))
         self.C[0:3,0:3]=np.identity(3)
         #q =  np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])
-        q =  np.array([0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.1, 0.1, 0.1])
+        q =  np.array([0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.1, 0.1, 0.1])/90
         self.Q = np.identity(N_STATES)*q            #[q_0 0 0 ..., 0 q_1 0 0, 0 0 q_2 ... ]
         #print(self.Q)
 
-        self.R=np.identity(N_MEASURE)*[0.05, 0.05, 0.1]
+        self.R=np.identity(N_MEASURE)*[0.05, 0.05, 0.1]/90
         #self.R = np.array([1, 1, 10])
         #print(self.R)
         self.P = None

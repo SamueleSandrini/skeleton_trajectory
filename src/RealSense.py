@@ -207,6 +207,7 @@ class RealSense():
 
 
         else:
+            """
             #Create pose array of all filtered KeyPoints empy
             skeletonArrayFiltered = PoseArray()
             skeletonArrayFiltered.header.stamp = rospy.Time.now()
@@ -230,6 +231,7 @@ class RealSense():
                 self.marker.id=k
                 self.marker.action = Marker.DELETE
                 self.pubMarkerFiltered.publish(self.marker)
+            """
 
         """
         img = cv2.cvtColor(self.colorFrame, cv2.COLOR_RGB2BGR)
