@@ -15,14 +15,14 @@ import time
 import mediapipe as mp
 import tf2_ros
 
-SKELETON_MARKER_SUB = '/skeleton_marker'
-KEYPOINTS_FILTERED = '/keypoints_filtered'
-SKELETON_FILTERED = '/skeleton_filtered'
-SKELETON_FILTERED_ARRAY = '/poses'    #/skeleton_filtered_PoseArray
-LIMBS_FILTERED = '/limbs_filtered'
-JOINT = '/jointLimb'
+SKELETON_MARKER_SUB = 'skeleton_marker'
+KEYPOINTS_FILTERED = 'keypoints_filtered'
+SKELETON_FILTERED = 'skeleton_filtered'
+SKELETON_FILTERED_ARRAY = 'poses'    #/skeleton_filtered_PoseArray
+LIMBS_FILTERED = 'limbs_filtered'
+JOINT = 'jointLimb'
 
-CAMERA_FRAME = "camera_color_optical_frame"
+#CAMERA_FRAME = "camera_color_optical_frame"
 
 N_KEYPOINTS = 33
 N_LIMBS = 4
@@ -39,6 +39,7 @@ class KeypointsAdvancedFiltering():
         """
         self.isKeypointTracked = np.zeros((N_KEYPOINTS,),dtype=bool)
         self.keypointsFilters = np.empty((N_KEYPOINTS,),dtype=object)
+
         #For limbs filtering
         self.limbsFilters = np.empty((N_LIMBS,),dtype=object)
         self.isLimbTracked = np.zeros((N_LIMBS,),dtype=bool)
@@ -54,6 +55,9 @@ class KeypointsAdvancedFiltering():
             self.limbsFilters[k]=KalmanFilterLimbs()
             pass
 
+        # Get private param
+        self.camera_ns = rospy.get_param('~camera_ns')
+
         #Subscriber
         self.subKeypoints = None
 
@@ -61,7 +65,7 @@ class KeypointsAdvancedFiltering():
         self.marker = Marker()
         self.marker.type = Marker.SPHERE
         self.marker.ns = "KeypointsFiltered"
-        self.marker.header.frame_id = CAMERA_FRAME
+        #self.marker.header.frame_id = CAMERA_FRAME
         self.marker.header.stamp = rospy.Time.now()
         self.marker.action = Marker.ADD
         self.marker.scale.x = 0.04
@@ -75,7 +79,7 @@ class KeypointsAdvancedFiltering():
         self.marker.color.a =1.0
 
         #Publisher keypoint filtered
-        self.pubMarkerFiltered = rospy.Publisher(KEYPOINTS_FILTERED, Marker, queue_size = 100)
+        self.pubMarkerFiltered = rospy.Publisher(self.camera_ns + '/' + KEYPOINTS_FILTERED, Marker, queue_size = 100)
 
         """
         Da qui in poi
@@ -83,20 +87,17 @@ class KeypointsAdvancedFiltering():
         self.listKeypoints = []
         self.listOfIndexesPres = []
 
-        self.pubSkeletonFiltered = rospy.Publisher(SKELETON_FILTERED, Marker, queue_size = 100)
-        self.pubSkeletonFilteredArray = rospy.Publisher(SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
+        self.pubSkeletonFiltered = rospy.Publisher(self.camera_ns + '/' + SKELETON_FILTERED, Marker, queue_size = 100)
+        self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns + '/' + SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
 
         #Publisher for limbs filtering
-        self.pubLimbsFiltered = rospy.Publisher(LIMBS_FILTERED, Marker, queue_size = 100)
+        self.pubLimbsFiltered = rospy.Publisher(self.camera_ns + '/' + LIMBS_FILTERED, Marker, queue_size = 100)
 
         #Publisher limbs joints
-        self.pubJoint = rospy.Publisher(JOINT, JointState, queue_size = 100)
+        self.pubJoint = rospy.Publisher(self.camera_ns + '/' + JOINT, JointState, queue_size = 100)
 
         # Mediapipe Utils and pose
         self.mp_pose = mp.solutions.pose
-
-
-
 
     def callbackKeypoint(self, keypoints):
         """
@@ -107,7 +108,7 @@ class KeypointsAdvancedFiltering():
         self.skeleton = Marker()
         self.skeleton.type = Marker.LINE_LIST
         self.skeleton.ns = "SegmentsFiltered"
-        self.skeleton.header.frame_id = CAMERA_FRAME
+        #self.skeleton.header.frame_id = CAMERA_FRAME
 
         self.skeleton.id=100
         self.skeleton.action = Marker.ADD
@@ -121,7 +122,7 @@ class KeypointsAdvancedFiltering():
         self.limbs = Marker()
         self.limbs.type = Marker.LINE_LIST
         self.limbs.ns = "SegmentsFiltered"
-        self.limbs.header.frame_id = CAMERA_FRAME
+        #self.limbs.header.frame_id = CAMERA_FRAME
 
         self.limbs.action = Marker.ADD
         self.limbs.scale.x=0.03
@@ -129,10 +130,14 @@ class KeypointsAdvancedFiltering():
         self.limbs.color.g = 0.0
         self.limbs.color.b = 2.0
         self.limbs.color.a =0.7
-        self.limbs.header.stamp = rospy.Time.now()
+
 
         rawKeypoint={}
         for keypoint in keypoints.markers:
+
+            # Retrive reference frame
+            self.frame_id = keypoint.header.frame_id
+
             idKeypoint=keypoint.id
 
             self.isKeypointPresent[idKeypoint]=True
@@ -142,7 +147,6 @@ class KeypointsAdvancedFiltering():
             rawKeypoint[idKeypoint]=y
             #Time of this keypoints
             self.timeKeypoint[idKeypoint]=time.time()
-
 
             #Check if time is too old
             for id,singleTime in enumerate(self.timeKeypoint):
@@ -155,8 +159,8 @@ class KeypointsAdvancedFiltering():
                 if deltaT>1.0/10.0:
                     if self.isKeypointTracked[id]:
                         self.isKeypointTracked[id]=False
-                        print("Keypoint number: {} too old, time:{}".format(id,deltaT))
-                        print("DeltaT: ",deltaT)
+                        rospy.loginfo("Keypoint number: {} too old, time:{}".format(id,deltaT))
+                        rospy.loginfo("DeltaT: {}".format(deltaT))
                     else:
                         pass
                         #print("Keypoint number: {} già troppo vecchio:".format(id))
@@ -172,6 +176,7 @@ class KeypointsAdvancedFiltering():
 
 
             #Populate message (this is message of keypoints that are seen by mediapipe and not tacked in open loop)
+            self.marker.header.frame_id=self.frame_id
             self.marker.id = idKeypoint
             self.marker.pose = Pose(Point(yFiltered[0],yFiltered[1],yFiltered[2]),Quaternion(0,0,0,1))
 
@@ -182,7 +187,7 @@ class KeypointsAdvancedFiltering():
             self.listKeypoints.append(self.marker.pose)
 
         self.skeleton.header.stamp = rospy.Time.now()
-
+        self.skeleton.header.frame_id = self.frame_id
         #Iterate all non detected keypoints and update it in open loop if the time passed is not too much (approximate 3 samples)
         for idKeypointNotDetected in np.setdiff1d(np.array(range(0,N_KEYPOINTS)),self.listOfIndexesPres):
             if self.isKeypointTracked[idKeypointNotDetected]:               #Not too much time
@@ -214,8 +219,8 @@ class KeypointsAdvancedFiltering():
                 xAxis = np.cross(yAxis,zAxis)
                 matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
 
-                self.showReferenceFrame(matR_camera_c7,c7,CAMERA_FRAME,"Frame_C7")
-                self.showReferenceFrame(matR_camera_c7,PbustSxU,CAMERA_FRAME,"Frame_SpallaSx")
+                self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_C7")
+                self.showReferenceFrame(matR_camera_c7,PbustSxU,self.frame_id, self.camera_ns + '/' + "Frame_SpallaSx")
 
                 #Compongo le matrici di roto-traslazione
 
@@ -253,6 +258,9 @@ class KeypointsAdvancedFiltering():
                 P_cam_obs=np.dot(M_camera_spallaSx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
 
                 #Message building
+                self.limbs.header.stamp = rospy.Time.now()
+                self.limbs.header.frame_id = self.frame_id
+
                 self.limbs.points.append(Point(PbustSxU[0],PbustSxU[1],PbustSxU[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
@@ -269,6 +277,7 @@ class KeypointsAdvancedFiltering():
 
             else:
                 self.isLimbTracked[0]=False
+
             if self.isKeypointPresent[RIGHT_ARM_KEYPOINTS].all():
                 #C7 Reference frame definition
                 zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
@@ -281,7 +290,7 @@ class KeypointsAdvancedFiltering():
                 matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
                 matR_camera_12=np.dot(np.array([xAxis,yAxis,zAxis]).T,np.array([[cos(np.pi), 0, sin(np.pi)],[0, 1, 0],[-sin(np.pi), 0, cos(np.pi)]]))
                 #self.showReferenceFrame(matR_camera_c7,c7,CAMERA_FRAME,"Frame_C7")
-                self.showReferenceFrame(matR_camera_12,PbustDxU,CAMERA_FRAME,"Frame_SpallaDx")
+                self.showReferenceFrame(matR_camera_12,PbustDxU,self.frame_id,self.camera_ns + '/' + "Frame_SpallaDx")
 
                 #Compongo le matrici di roto-traslazione
                 M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
@@ -317,6 +326,8 @@ class KeypointsAdvancedFiltering():
                 P_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
 
                 #Message building
+                self.limbs.header.stamp = rospy.Time.now()
+                self.limbs.header.frame_id = self.frame_id
                 self.limbs.points.append(Point(PbustDxU[0],PbustDxU[1],PbustDxU[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
@@ -329,6 +340,7 @@ class KeypointsAdvancedFiltering():
                 self.replaceKeypoint(RIGHT_ARM_KEYPOINTS[1:],G_cam_obs,P_cam_obs)
             else:
                 self.isLimbTracked[1]=False
+
             if self.isKeypointPresent[LEFT_LEG_KEYPOINTS].all():
                 #C7 Reference frame definition
                 zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
@@ -340,8 +352,8 @@ class KeypointsAdvancedFiltering():
                 xAxis = np.cross(yAxis,zAxis)
                 matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
 
-                self.showReferenceFrame(matR_camera_c7,c7,CAMERA_FRAME,"Frame_C7")
-                self.showReferenceFrame(matR_camera_c7,PbustSxL,CAMERA_FRAME,"Frame_LegSx")
+                self.showReferenceFrame(matR_camera_c7,c7,self.frame_id,self.camera_ns + '/' + "Frame_C7")
+                self.showReferenceFrame(matR_camera_c7,PbustSxL,self.frame_id,self.camera_ns + '/' + "Frame_LegSx")
 
                 #Compongo le matrici di roto-traslazione
 
@@ -379,6 +391,8 @@ class KeypointsAdvancedFiltering():
                 P_cam_obs=np.dot(M_camera_legSx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
 
                 #Message building
+                self.limbs.header.stamp = rospy.Time.now()
+                self.limbs.header.frame_id = self.frame_id
                 self.limbs.points.append(Point(PbustSxL[0],PbustSxL[1],PbustSxL[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
@@ -406,7 +420,7 @@ class KeypointsAdvancedFiltering():
                 matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
                 matR_camera_12=np.dot(np.array([xAxis,yAxis,zAxis]).T,np.array([[cos(np.pi), 0, sin(np.pi)],[0, 1, 0],[-sin(np.pi), 0, cos(np.pi)]]))
                 #self.showReferenceFrame(matR_camera_c7,c7,CAMERA_FRAME,"Frame_C7")
-                self.showReferenceFrame(matR_camera_12,PbustDxL,CAMERA_FRAME,"Frame_SpallaDx")
+                self.showReferenceFrame(matR_camera_12,PbustDxL,self.frame_id,self.camera_ns + '/' + "Frame_SpallaDx")
 
                 #Compongo le matrici di roto-traslazione
                 M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
@@ -442,6 +456,8 @@ class KeypointsAdvancedFiltering():
                 P_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
 
                 #Message building
+                self.limbs.header.stamp = rospy.Time.now()
+                self.limbs.header.frame_id = self.frame_id
                 self.limbs.points.append(Point(PbustDxL[0],PbustDxL[1],PbustDxL[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
                 self.limbs.points.append(Point(G_cam_obs[0],G_cam_obs[1],G_cam_obs[2]))
@@ -458,7 +474,7 @@ class KeypointsAdvancedFiltering():
         #Create pose array of all filtered KeyPoints
         skeletonArrayFiltered = PoseArray()
         skeletonArrayFiltered.header.stamp = rospy.Time.now()
-        skeletonArrayFiltered.header.frame_id = CAMERA_FRAME
+        skeletonArrayFiltered.header.frame_id = self.frame_id
         skeletonArrayFiltered.poses = self.listKeypoints
         self.pubSkeletonFilteredArray.publish(skeletonArrayFiltered)
 
@@ -492,7 +508,7 @@ class KeypointsAdvancedFiltering():
         self.isKeypointPresent = np.zeros((N_KEYPOINTS,),dtype=bool)
 
     def subAndFilter(self):
-        self.subscriberKeypoint=rospy.Subscriber(SKELETON_MARKER_SUB,MarkerArray,self.callbackKeypoint)
+        self.subscriberKeypoint=rospy.Subscriber(self.camera_ns + '/'+ SKELETON_MARKER_SUB,MarkerArray,self.callbackKeypoint)
         rospy.spin()
     def fromKeypointToPoint(self,keypoint):
         return np.array([keypoint.position.x, keypoint.position.y, keypoint.position.z])
