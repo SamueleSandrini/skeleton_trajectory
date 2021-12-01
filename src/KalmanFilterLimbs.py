@@ -267,7 +267,7 @@ class KalmanFilterLimbs():
         P=np.concatenate([P,[1]])
 
         PrespectGext=np.dot(np.linalg.inv(M02),P)
-        print(PrespectGext[0:3])
+        #print(PrespectGext[0:3])
         try:
             return PrespectGext[0:3]
         except np.linalg.LinAlgError as e:

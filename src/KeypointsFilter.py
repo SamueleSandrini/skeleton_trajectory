@@ -12,12 +12,12 @@ import mediapipe as mp
 
 CAMERA_FRAME="camera_color_optical_frame"
 
-SKELETON_MARKER_SUB = '/skeleton_marker'
-KEYPOINTS_FILTERED = '/keypoints_filtered'
-SKELETON_FILTERED = '/skeleton_filtered'
-SKELETON_FILTERED_ARRAY = '/poses'
-KEYPOINT_VELOCITY = '/keypoint_velocity'
-VARIANCE_MARKER = '/marker_variance'
+SKELETON_MARKER_SUB = 'skeleton_marker'
+KEYPOINTS_FILTERED = 'keypoints_filtered'
+SKELETON_FILTERED = 'skeleton_filtered'
+SKELETON_FILTERED_ARRAY = 'poses'
+KEYPOINT_VELOCITY = 'keypoint_velocity'
+VARIANCE_MARKER = 'marker_variance'
 
 N_KEYPOINTS = 33
 
@@ -37,11 +37,14 @@ class KeypointsFilter():
         #Subscriber
         self.subKeypoints = None
 
+        # Get private param
+        self.camera_ns = rospy.get_param('~camera_ns')
+
         #Message general definition
         self.marker = Marker()
         self.marker.type = Marker.SPHERE
         self.marker.ns = "KeypointsFiltered"
-        self.marker.header.frame_id = CAMERA_FRAME
+        #self.marker.header.frame_id = CAMERA_FRAME
         self.marker.header.stamp = rospy.Time.now()
         self.marker.action = Marker.ADD
         self.marker.scale.x = 0.04
@@ -58,13 +61,13 @@ class KeypointsFilter():
         self.markerVariance = Marker()
         self.markerVariance.type = Marker.SPHERE
         self.markerVariance.ns = "KeypointsFilteredVariance"
-        self.markerVariance.header.frame_id = CAMERA_FRAME
+        #self.markerVariance.header.frame_id = CAMERA_FRAME
         self.markerVariance.header.stamp = rospy.Time.now()
         self.markerVariance.action = Marker.ADD
-        self.pubMarkerVariance = rospy.Publisher(VARIANCE_MARKER, Marker, queue_size = 100)
+        self.pubMarkerVariance = rospy.Publisher(self.camera_ns + '/'+ VARIANCE_MARKER, Marker, queue_size = 100)
 
         #Publisher keypoint filtered
-        self.pubMarkerFiltered = rospy.Publisher(KEYPOINTS_FILTERED, Marker, queue_size = 100)
+        self.pubMarkerFiltered = rospy.Publisher(self.camera_ns + '/'+ KEYPOINTS_FILTERED, Marker, queue_size = 100)
 
         """
         Da qui in poi
@@ -73,11 +76,11 @@ class KeypointsFilter():
         self.listOfIndexesPres = []
 
 
-        self.pubSkeletonFiltered = rospy.Publisher(SKELETON_FILTERED, Marker, queue_size = 100)
-        self.pubSkeletonFilteredArray = rospy.Publisher(SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
+        self.pubSkeletonFiltered = rospy.Publisher(self.camera_ns + '/'+ SKELETON_FILTERED, Marker, queue_size = 100)
+        self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns + '/'+ SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
 
         #Publisher Keypoint velocity
-        self.pubKeypointVelocity = rospy.Publisher(KEYPOINT_VELOCITY, TwistStamped, queue_size = 100)
+        self.pubKeypointVelocity = rospy.Publisher(self.camera_ns + '/'+ KEYPOINT_VELOCITY, TwistStamped, queue_size = 100)
 
 
         # Mediapipe Utils and pose
@@ -91,7 +94,7 @@ class KeypointsFilter():
         self.skeleton = Marker()
         self.skeleton.type = Marker.LINE_LIST
         self.skeleton.ns = "SegmentsFiltered"
-        self.skeleton.header.frame_id = CAMERA_FRAME
+        #self.skeleton.header.frame_id = CAMERA_FRAME
 
         self.skeleton.id=100
         self.skeleton.action = Marker.ADD
@@ -104,6 +107,9 @@ class KeypointsFilter():
         for keypoint in keypoints.markers:
 
             idKeypoint=keypoint.id
+
+            # Retrive reference frame
+            self.frame_id = keypoint.header.frame_id
 
             #Measurements
             y=np.ones((3,))*[keypoint.pose.position.x,keypoint.pose.position.y,keypoint.pose.position.z]
@@ -138,13 +144,14 @@ class KeypointsFilter():
                 #print("Update keypoint: {}".format(idKeypoint))
 
             #Show velocity vector
-            self.showReferenceFrame(np.eye(3),yFiltered,CAMERA_FRAME,'KeypointFrame'+str(idKeypoint))
+            self.showReferenceFrame(np.eye(3),yFiltered,self.frame_id,'KeypointFrame'+str(idKeypoint))
             self.pubKeypointVelocity.publish(self.createTwistMessage(self.keypointsFilters[idKeypoint].getCartesianVelocity(),idKeypoint))
 
             #Calcolo varianza
-            print("Varianza posizione:",self.keypointsFilters[idKeypoint].getPosDevSt())
+            #print("Varianza posizione:",self.keypointsFilters[idKeypoint].getPosDevSt())
             self.markerVariance = Marker()
             self.markerVariance.header.stamp = rospy.Time.now()
+            self.markerVariance.header.frame_id = self.frame_id
             self.markerVariance.id = idKeypoint
             self.markerVariance.pose = Pose(Point(yFiltered[0],yFiltered[1],yFiltered[2]),Quaternion(self.keypointsFilters[idKeypoint].getPosDevSt()[0],self.keypointsFilters[idKeypoint].getPosDevSt()[1],self.keypointsFilters[idKeypoint].getPosDevSt()[2],1))
             self.pubMarkerVariance.publish(self.markerVariance)
@@ -153,6 +160,7 @@ class KeypointsFilter():
 
             #Populate message (this is message of keypoints that are seen by mediapipe and not tacked in open loop)
             self.marker.header.stamp = rospy.Time.now()
+            self.marker.header.frame_id = self.frame_id
             self.marker.id = idKeypoint
             self.marker.pose = Pose(Point(yFiltered[0],yFiltered[1],yFiltered[2]),Quaternion(0,0,0,1))
 
@@ -165,6 +173,7 @@ class KeypointsFilter():
             self.listKeypoints.append(self.marker.pose)
 
         self.skeleton.header.stamp = rospy.Time.now()
+        self.skeleton.header.frame_id=self.frame_id
 
         #Iterate all non detected keypoints and update it in open loop if the time passed is not too much (approximate 3 samples)
         for idKeypointNotDetected in np.setdiff1d(np.array(range(0,N_KEYPOINTS)),self.listOfIndexesPres):
@@ -172,6 +181,7 @@ class KeypointsFilter():
                 yModel = self.keypointsFilters[idKeypointNotDetected].updateOpenLoop()  #It returns
                 #Populate message
                 self.marker.header.stamp = rospy.Time.now()
+                self.marker.header.frame_id = self.frame_id
                 self.marker.id = idKeypointNotDetected
                 self.marker.pose = Pose(Point(yModel[0],yModel[1],yModel[2]),Quaternion(0,0,0,1))
                 self.pubMarkerFiltered.publish(self.marker)
@@ -179,7 +189,7 @@ class KeypointsFilter():
                 self.listKeypoints.append( Pose(Point(yModel[0],yModel[1],yModel[2]),Quaternion(0,0,0,1)))
                 print("Keypoint number: {} is in open Loop".format(idKeypointNotDetected))
                 #Calcolo varianza
-                print("Varianza posizione:",self.keypointsFilters[idKeypoint].getPosDevSt())
+                #print("Varianza posizione:",self.keypointsFilters[idKeypoint].getPosDevSt())
                 self.markerVariance = Marker()
                 self.markerVariance.header.stamp = rospy.Time.now()
                 self.markerVariance.id = idKeypointNotDetected
@@ -188,7 +198,7 @@ class KeypointsFilter():
         #Create pose array of all filtered KeyPoints
         skeletonArrayFiltered = PoseArray()
         skeletonArrayFiltered.header.stamp = rospy.Time.now()
-        skeletonArrayFiltered.header.frame_id = CAMERA_FRAME
+        skeletonArrayFiltered.header.frame_id = self.frame_id
 
         #print(self.listKeypoints)
         skeletonArrayFiltered.poses = self.listKeypoints
@@ -215,7 +225,7 @@ class KeypointsFilter():
 
 
     def subAndFilter(self):
-        self.subscriberKeypoint=rospy.Subscriber(SKELETON_MARKER_SUB,MarkerArray,self.callbackKeypoint)
+        self.subscriberKeypoint=rospy.Subscriber(self.camera_ns + '/'+ SKELETON_MARKER_SUB,MarkerArray,self.callbackKeypoint)
         rospy.spin()
     def createTwistMessage(self,cartesianVelocityVector,idKeyp):
 

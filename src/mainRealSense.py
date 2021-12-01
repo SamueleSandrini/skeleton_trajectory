@@ -9,11 +9,11 @@ import mediapipe as mp
 
 #import matplotlib.pyplot as plt
 def my_hook():
-    print("Programma terminato")
+    rospy.loginfo("Programma terminato")
 
 def main():
     # Subscriber node
-        rospy.init_node("Acquisition_Identification",anonymous=True)
+        rospy.init_node("acquisition_identification",anonymous=True)
 
         #Realsense object to menage acquisition
         realsense=RealSense()

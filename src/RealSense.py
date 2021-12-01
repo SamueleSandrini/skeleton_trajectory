@@ -4,7 +4,7 @@ import time
 import rospy
 import message_filters
 from cv_bridge import CvBridge, CvBridgeError
-
+import matplotlib.pyplot as plt
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Int64
 from geometry_msgs.msg import PoseArray, Pose, Quaternion, Point
@@ -18,22 +18,21 @@ import pyrealsense2 as rs2
 from math import floor
 
 # Realsense Topic
-COLOR_FRAME_TOPIC = '/camera/color/image_raw'
-DEPTH_ALIGNED_TOPIC = '/camera/aligned_depth_to_color/image_raw'
-CAMERA_INFO_TOPIC = '/camera/aligned_depth_to_color/camera_info'
+COLOR_FRAME_TOPIC = 'color/image_raw'
+DEPTH_ALIGNED_TOPIC = 'aligned_depth_to_color/image_raw'
+CAMERA_INFO_TOPIC = 'aligned_depth_to_color/camera_info'
 
 #Publisher node skeleton
-SKELETON_PUB = '/skeleton'
-SKELETON_MARKER_PUB = '/skeleton_marker'
-SKELETON_PUB_ARRAY = '/skeleton_marker_PoseArray'
+SKELETON_PUB = 'skeleton'
+SKELETON_MARKER_PUB = 'skeleton_marker'
+SKELETON_PUB_ARRAY = 'skeleton_marker_PoseArray'
 #Publisher for frequency measurement
 FREQ_MEAS_PUB = 'iteration'
 
-SKELETON_FILTERED_ARRAY = '/poses'
-SKELETON_FILTERED = '/skeleton_filtered'
-KEYPOINTS_FILTERED = '/keypoints_filtered'
+SKELETON_FILTERED_ARRAY = 'poses'
+SKELETON_FILTERED = 'skeleton_filtered'
+KEYPOINTS_FILTERED = 'keypoints_filtered'
 
-CAMERA_FRAME = "camera_color_optical_frame"
 
 # Costant loginfo
 PARAMETERS_LOG = 'Camera Parameters acquired \n  Parameters:{}'
@@ -58,23 +57,28 @@ class RealSense():
         self.mp_pose = mp.solutions.pose
         self.pose=self.mp_pose.Pose(min_detection_confidence=0.8,min_tracking_confidence=0.5)
 
+        # Get private param
+
+        self.camera_ns = rospy.get_param('~camera_ns')
+        self.camera_window = rospy.get_param('~camera_window')
+
         # Frequency measurement
-        self.pubIterations = rospy.Publisher(FREQ_MEAS_PUB, Int64, queue_size=10)
+        self.pubIterations = rospy.Publisher(self.camera_ns+'/'+FREQ_MEAS_PUB, Int64, queue_size=10)
         self.iterations=0
+
         # Publischer skeleton KeyPoints and connections
-        self.pubMarker = rospy.Publisher(SKELETON_MARKER_PUB, MarkerArray, queue_size = 100)
-        self.pubSkeleton = rospy.Publisher(SKELETON_PUB, Marker, queue_size = 100)
+        self.pubMarker = rospy.Publisher(self.camera_ns+'/'+SKELETON_MARKER_PUB, MarkerArray, queue_size = 100)
+        self.pubSkeleton = rospy.Publisher(self.camera_ns+'/'+SKELETON_PUB, Marker, queue_size = 100)
         #It can be usefull for compatibility
 
-        # Gestione camera pyrealsense2
+        # Management camera pyrealsense2
         self.intrinsics = None
         self.cameraInfoReceived = False
 
         #Publisher usefull for delate
-        self.pubSkeletonFilteredArray = rospy.Publisher(SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
-        self.pubSkeletonFiltered = rospy.Publisher(SKELETON_FILTERED, Marker, queue_size = 100)
-        self.pubMarkerFiltered = rospy.Publisher(KEYPOINTS_FILTERED, Marker, queue_size = 100)
-
+        self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns+'/'+SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
+        self.pubSkeletonFiltered = rospy.Publisher(self.camera_ns+'/'+SKELETON_FILTERED, Marker, queue_size = 100)
+        self.pubMarkerFiltered = rospy.Publisher(self.camera_ns+'/'+KEYPOINTS_FILTERED, Marker, queue_size = 100)
 
 
     def callback(self,frameRgb,frameDepth):
@@ -84,16 +88,10 @@ class RealSense():
         @param frameDepth : camera msg depth
         """
         # Convertion from ros msg image to cv2 image
-        self.colorFrame = self.bridge.imgmsg_to_cv2(frameRgb, desired_encoding="passthrough")
-        self.depthFrame = self.bridge.imgmsg_to_cv2(frameDepth, desired_encoding="passthrough")
+        self.colorFrame = self.bridge.imgmsg_to_cv2(frameRgb, desired_encoding="passthrough").copy()
+        self.depthFrame = self.bridge.imgmsg_to_cv2(frameDepth, desired_encoding="passthrough").copy()
         self.frameDistance = self.bridge.imgmsg_to_cv2(frameDepth, desired_encoding="32FC1")
 
-        """
-        cv_image_array = np.array(self.frameDistance, dtype = np.dtype('f8'))
-        cv_image_norm = cv2.normalize(cv_image_array, cv_image_array, 0, 1, cv2.NORM_MINMAX)
-
-        depth_rgb = cv2.merge([cv_image_norm,cv_image_norm,cv_image_norm])
-        """
         #cv2.cvtColor(cv_image_norm,cv2.COLOR_GRAY2RGB)
 
 
@@ -211,13 +209,13 @@ class RealSense():
             #Create pose array of all filtered KeyPoints empy
             skeletonArrayFiltered = PoseArray()
             skeletonArrayFiltered.header.stamp = rospy.Time.now()
-            skeletonArrayFiltered.header.frame_id = CAMERA_FRAME
+            skeletonArrayFiltered.header.frame_id = self.frame_id
             self.pubSkeletonFilteredArray.publish(skeletonArrayFiltered)
             # Message costructor for all segments Filtering
             self.skeleton = Marker()
             self.skeleton.type = Marker.LINE_LIST
             self.skeleton.ns = "SegmentsFiltered"
-            self.skeleton.header.frame_id = CAMERA_FRAME
+            self.skeleton.header.frame_id = self.frame_id
             self.skeleton.action = Marker.DELETE
             self.skeleton.id=100
             self.pubSkeletonFiltered.publish(self.skeleton)
@@ -226,31 +224,32 @@ class RealSense():
                 self.marker = Marker()
                 self.marker.type = Marker.SPHERE
                 self.marker.ns = "KeypointsFiltered"
-                self.marker.header.frame_id = CAMERA_FRAME
+                self.marker.header.frame_id = self.frame_id
                 self.marker.header.stamp = rospy.Time.now()
                 self.marker.id=k
                 self.marker.action = Marker.DELETE
                 self.pubMarkerFiltered.publish(self.marker)
             """
+        if self.camera_window:
 
-        """
-        img = cv2.cvtColor(self.colorFrame, cv2.COLOR_RGB2BGR)
+            self.showImage(self.camera_ns + " RGB",self.camera_ns + " DEPTH")
 
-        cv2.imshow('Rgb',img)
 
-        cv2.imshow("Depth RGB",depth_rgb)
-        # Check if a kay is pressed
-        key = cv2.waitKey(delay=1)
-        if key == ord('q'):
-            cv2.destroyAllWindows()
-            self.stop()                 # Unregister all subscriber
-        """
+            # Check if a kay is pressed
+            key = cv2.waitKey(delay=1)
+            if key == ord('q'):
+                cv2.destroyAllWindows()
+                self.stop()                 # Unregister all subscriber
+
         # Publisher for measure frequency
         self.pubIterations.publish(self.iterations)
         self.iterations=self.iterations+1
 
 
     def callbackOnlyRgb(self,frameRgb):
+        """
+        Callback for get rgb frame
+        """
         self.colorFrame = self.bridge.imgmsg_to_cv2(frameRgb, desired_encoding="passthrough")
 
     def cameraInfoCallback(self,cameraInfo):
@@ -274,9 +273,11 @@ class RealSense():
 
         #Reference frame
         self.frame_id=cameraInfo.header.frame_id
-        print(self.frame_id)
 
     def waitCameraInfo(self):
+        """
+        Method for waiting to receive camera parameters
+        """
         while not self.cameraInfoReceived:
             pass
         self.sub_info.unregister()
@@ -286,9 +287,8 @@ class RealSense():
         """
         Method for acquiring in syncronization way rgb and depth frame
         """
-        print("Dentro Acquire")
-        self.subcriberColorFrame = message_filters.Subscriber(COLOR_FRAME_TOPIC, Image)
-        self.subcriberDepthFrame = message_filters.Subscriber(DEPTH_ALIGNED_TOPIC, Image)
+        self.subcriberColorFrame = message_filters.Subscriber(self.camera_ns+'/'+COLOR_FRAME_TOPIC, Image)
+        self.subcriberDepthFrame = message_filters.Subscriber(self.camera_ns+'/'+DEPTH_ALIGNED_TOPIC, Image)
         # Subscriber Synchronization
         subSync = message_filters.TimeSynchronizer([self.subcriberColorFrame, self.subcriberDepthFrame], queue_size=10)
         #Call callback sincronized
@@ -299,23 +299,34 @@ class RealSense():
 
     def acquireOnlyRgb(self):
         """
-        Method for acquiring in syncronization way rgb
+        Method for acquiring only rgb-frame
         """
-        self.subcriberColor= rospy.Subscriber(COLOR_FRAME_TOPIC, Image, self.callbackOnlyRgb, queue_size=1)
+        self.subcriberColor= rospy.Subscriber(self.camera_ns + '/' + COLOR_FRAME_TOPIC, Image, self.callbackOnlyRgb, queue_size=1)
 
     def showImage(self,nameWindowRgb,nameWindowDepth):
         """
         Method for showing the image
         """
+
+        cv_image_array = np.array(self.frameDistance, dtype = np.dtype('f8'))
+        cv_image_norm = cv2.normalize(cv_image_array, cv_image_array, 0, 1, cv2.NORM_MINMAX)
+
+        depth_rgb = cv2.merge([cv_image_norm,cv_image_norm,cv_image_norm])
         #Rgb -> Bgr convertion for cv2 imshow
-        imgImshow = cv2.cvtColor(realsense.colorFrame, cv2.COLOR_RGB2BGR)
-        cv2.imshow(nameWindowRgb, imgImshow)
-        cv2.imshow(nameWindowDepth,self.depthFrame)
+        img = cv2.cvtColor(self.colorFrame, cv2.COLOR_RGB2BGR)
+
+        cv2.imshow(nameWindowRgb ,img)
+        cv2.imshow(nameWindowDepth,depth_rgb)
+
     def getCameraParam(self):
-        self.sub_info = rospy.Subscriber(CAMERA_INFO_TOPIC,CameraInfo,self.cameraInfoCallback)
+        """
+        Subscriber for camera parameter
+        """
+        self.sub_info = rospy.Subscriber(self.camera_ns + '/' + CAMERA_INFO_TOPIC,CameraInfo,self.cameraInfoCallback)
     def stop(self):
-        '''Method to disconnect the subscribers from kinect2_bridge topics, to release
-            some memory and avoid filling up the queue.'''
+        """
+        Method to disconnect the subscribers to release memory and avoid filling up the queue.
+        """
         self.subcriberColorFrame.unregister()
         self.subcriberDepthFrame.unregister()
 
@@ -338,7 +349,7 @@ class RealSense():
             if rigthBust<250 or rigthBust>1200:
                 return True
         if len(indexesPres)<2:
-            print("Keypoints less then 2")
+            rospy.loginfo("Keypoints less then 2")
             return True
         """
         print(indexesPres)

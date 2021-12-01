@@ -1,11 +1,21 @@
 <launch>
 
-  <arg name="kalmanBase" default="true"/>
+  <!-- I need to declare that this launch need these args -->
+  <arg name="kalman_base"/>
+  <arg name="camera_ns"/>
+  <arg name="camera_window" default="false"/>
 
+  <node name="$(arg camera_ns)_acquisition_identification" pkg="skeleton_trajectory" type="mainRealSense.py"  output="screen" >
+    <param name="camera_ns" type="str" value="$(arg camera_ns)" />
+    <param name="camera_window" type="bool" value="$(arg camera_window)" />
+  </node>
 
-  <node name="Acquisition_Identification" pkg="skeleton_trajectory" type="mainRealSense.py"  output="screen" />
-  <node unless="$(arg kalmanBase)" name="Kinematic_Kalman" pkg="skeleton_trajectory" type="mainKalmanLimbs.py"  output="screen" />
-  <node if="$(arg kalmanBase)" name="Indipendent_Kalman" pkg="skeleton_trajectory" type="mainKalman.py"  output="screen" />
-  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find skeleton_trajectory)/config/cameraVisualSettingsSkeleton.rviz" />
+  <node unless="$(arg kalman_base)" name="$(arg camera_ns)_kinematic_kalman" pkg="skeleton_trajectory" type="mainKalmanLimbs.py"  output="screen" >
+    <param name="camera_ns" type="str" value="$(arg camera_ns)" />
+  </node>
+  <node if="$(arg kalman_base)" name="$(arg camera_ns)_indipendent_kalman" pkg="skeleton_trajectory" type="mainKalman.py"  output="screen" >
+    <param name="camera_ns" type="str" value="$(arg camera_ns)" />
+  </node>
+
 
 </launch>
