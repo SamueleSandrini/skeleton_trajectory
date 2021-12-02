@@ -17,5 +17,4 @@
     <param name="camera_ns" type="str" value="$(arg camera_ns)" />
   </node>
 
-
 </launch>

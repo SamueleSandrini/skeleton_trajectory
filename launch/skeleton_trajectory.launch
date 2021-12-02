@@ -1,26 +1,29 @@
 <launch>
 
   <arg name="kalman_base" default="true"/>
+  <arg name="rviz_window" default="false"/>
   <arg name="camera_window" default="false"/>
 
-<include file="$(find skeleton_trajectory)/launch/skeletonTrajectory.launch" >
+<include file="$(find skeleton_trajectory)/launch/single_camera.launch" >
     <arg name="camera_ns" value="camera" />
     <arg name="kalman_base" default="$(arg kalman_base)"/>
     <arg name="camera_window" default="$(arg camera_window)"/>
 </include>
 
-<include file="$(find skeleton_trajectory)/launch/skeletonTrajectory.launch" >
+<include file="$(find skeleton_trajectory)/launch/single_camera.launch" >
     <arg name="camera_ns" value="camera2" />
     <arg name="kalman_base" default="$(arg kalman_base)"/>
     <arg name="camera_window" default="$(arg camera_window)"/>
 </include>
+
+<node if="$(arg rviz_window)" type="rviz" name="rviz" pkg="rviz" args="-d $(find skeleton_trajectory)/config/cameraVisualSettingsSkeleton.rviz" />
+
+
 <!--
   <include file="$(dirname)/other.launch" />
       <srg name="camera_ns" value="camera2" />
       <arg name="kalmanBase" default="$(arg kalmanBase)"/>
   </include>
-
-  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find skeleton_trajectory)/config/cameraVisualSettingsSkeleton.rviz" />
 -->
 
 </launch>
