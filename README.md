@@ -19,6 +19,15 @@ The following parameter is available:
   * <code>kalmanBase:=True</code> is the default condition and performs filtering with the points managed independently of each other (with assumption of constant acceleration in cartesian space).
   * <code>kalmanBase:=False</code> performed filtering with the model of the limb kinematics of person.
 
+## Requirements
+- **pyrealsense2**:
+```bash
+pip install pyrealsense2
+```
+- **Upgrade scipy**: nedded for rotations
+```bash
+pip install --upgrade scipy
+```
 ## Maintainers
 - Samuele Sandrini, [SamueleSandrini](https://github.com/SamueleSandrini)
 - Manuel Beschi, [ManuelBeschi](https://github.com/ManuelBeschi)
