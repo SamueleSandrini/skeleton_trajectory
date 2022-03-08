@@ -15,7 +15,7 @@ roslaunch skeleton_trajectory skeleton_trajectory.launch
 ```
 ## Launch parameters
 The following parameter is available:
-- **KalmanBase**: it specifies the filter typology. '''KalmanBase:=True''' is the default condition and performs filtering with the points managed independently of each other (with assumption of constant acceleration in cartesian space). '''KalmanBase:=False''' performed filtering with the model of the limb kinematics of person.
+- **KalmanBase**: it specifies the filter typology. <code>KalmanBase:=True</code> is the default condition and performs filtering with the points managed independently of each other (with assumption of constant acceleration in cartesian space). <code>KalmanBase:=False</code> performed filtering with the model of the limb kinematics of person.
 
 ## Maintainers
 - Samuele Sandrini, [SamueleSandrini](https://github.com/SamueleSandrini)
