@@ -463,6 +463,10 @@ class KeypointsAdvancedFiltering():
         self.pubSkeletonFilteredArray.publish(skeletonArrayFiltered)
 
 
+        for index, keyp in enumerate(self.listKeypoints):
+            self.pubKeypointReferenceFrame(keyp.position,CAMERA_FRAME,"id_"+str(self.listOfIndexesPres[index]))
+                    
+
         #Iterate connections between keypoints: skeleton information (plot)
         n=0
         for connection in self.mp_pose.POSE_CONNECTIONS:
@@ -497,6 +501,24 @@ class KeypointsAdvancedFiltering():
     def fromKeypointToPoint(self,keypoint):
         return np.array([keypoint.position.x, keypoint.position.y, keypoint.position.z])
 
+    def pubKeypointReferenceFrame(self,position,originFrame,destinationFrame):
+        """
+        Method for show (publish) a reference frame
+        @param matR: rotation matrix
+        @param tran: translation Vector
+        @param originFrame: base frame
+        @param destinationFrame: child frame
+        """
+        t0=Transform()
+        t0TS=TransformStamped()
+        t0.rotation=Quaternion(0,0,0,1)
+        t0.translation=Vector3(position.x,position.y,position.z)
+        t0TS.header.frame_id=originFrame
+        t0TS.header.stamp= rospy.Time.now()
+        t0TS.child_frame_id=destinationFrame
+        t0TS.transform=t0
+        br = tf2_ros.TransformBroadcaster()
+        br.sendTransform(t0TS)
     def showReferenceFrame(self,matR,tran,originFrame,destinationFrame):
         """
         Method for show (publish) a reference frame
