@@ -20,7 +20,8 @@ The following parameter is available:
   * <code>kalmanBase:=False</code> performed filtering with the model of the limb kinematics of person.
 
 ## Requirements
-- Create a [https://docs.python.org/3/library/venv.html](venv): '''python -m venv /path/to/new/virtual/environment'''
+- Create a [https://docs.python.org/3/library/venv.html](venv): 
+''' python -m venv /path/to/new/virtual/environment '''
 - [Install requirements](https://stackoverflow.com/questions/7225900/how-can-i-install-packages-using-pip-according-to-the-requirements-txt-file-from) (pip or pip3) (check path to requirements): '''pip3 install -r requirements.txt'''
 - Source virtual environment: '''source path_to_venv/bin/activate'''
 
