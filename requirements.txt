@@ -1,0 +1,12 @@
+rospy>=1.15.14
+rospkg
+pyaml
+cv_bridge==1.16.2
+numpy==1.24.3
+pyrealsense2==2.53.1.4623
+scipy==1.10.1
+matplotlib>=3.7.1
+mediapipe>=0.10.0
+message_filters>=1.16.0
+sensor_msgs>=1.13.1
+tf2_ros>=0.7.6
