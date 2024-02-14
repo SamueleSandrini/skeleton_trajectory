@@ -21,7 +21,7 @@ SKELETON_FILTERED = 'skeleton_filtered'
 SKELETON_FILTERED_ARRAY = 'poses'    #/skeleton_filtered_PoseArray
 LIMBS_FILTERED = 'limbs_filtered'
 JOINT = 'jointLimb'
-
+JOINT_IN_DEG = False
 #CAMERA_FRAME = "camera_color_optical_frame"
 
 N_KEYPOINTS = 33
@@ -208,23 +208,31 @@ class KeypointsAdvancedFiltering():
             PbustSxU=self.fromKeypointToPoint(self.listKeypoints[self.listOfIndexesPres.index(11)])
             PbustDxL=self.fromKeypointToPoint(self.listKeypoints[self.listOfIndexesPres.index(24)])
             PbustSxL=self.fromKeypointToPoint(self.listKeypoints[self.listOfIndexesPres.index(23)])
+            
+            #C7 Reference frame definition
+            zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
+            c7 = ( PbustDxU + PbustSxU ) / 2
+            l5 = ( PbustDxL + PbustSxL ) / 2
+            yAxis = ( c7 - l5 ) / np.linalg.norm( c7 - l5 )
+            yAxis = yAxis - np.dot(yAxis,zAxis)/(np.dot(zAxis,zAxis))*zAxis
+            yAxis = yAxis/np.linalg.norm(yAxis)
+            xAxis = np.cross(yAxis,zAxis)
+            matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
+            
+            self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_C7")
+            self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_L5")
+
+            self.showReferenceFrame(matR_camera_c7,PbustSxU,self.frame_id, self.camera_ns + '/' + "Frame_ShoulderSx")
+            
+            matR_camera_12=np.dot(np.array([xAxis,yAxis,zAxis]).T,np.array([[cos(np.pi), 0, sin(np.pi)],[0, 1, 0],[-sin(np.pi), 0, cos(np.pi)]]))
+            self.showReferenceFrame(matR_camera_12,PbustDxU,self.frame_id,self.camera_ns + '/' + "Frame_ShoulderDx")
+
+            self.showReferenceFrame(matR_camera_c7,PbustSxL,self.frame_id,self.camera_ns + '/' + "Frame_LegSx")
+            self.showReferenceFrame(matR_camera_12,PbustDxL,self.frame_id,self.camera_ns + '/' + "Frame_LegDx")
+
+
             if self.isKeypointPresent[LEFT_ARM_KEYPOINTS].all():
-                #C7 Reference frame definition
-                zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
-                c7 = ( PbustDxU + PbustSxU ) / 2
-                l5 = ( PbustDxL + PbustSxL ) / 2
-                yAxis = ( c7 - l5 ) / np.linalg.norm( c7 - l5 )
-                yAxis = yAxis - np.dot(yAxis,zAxis)/(np.dot(zAxis,zAxis))*zAxis
-                yAxis = yAxis/np.linalg.norm(yAxis)
-                xAxis = np.cross(yAxis,zAxis)
-                matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
 
-                self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_C7")
-                self.showReferenceFrame(matR_camera_c7,PbustSxU,self.frame_id, self.camera_ns + '/' + "Frame_SpallaSx")
-
-                #Compongo le matrici di roto-traslazione
-
-                M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
                 M_camera_spallaSx = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(PbustSxU, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
                 matR_camera_c7_inv = np.linalg.inv(matR_camera_c7)
 
@@ -279,23 +287,11 @@ class KeypointsAdvancedFiltering():
                 self.isLimbTracked[0]=False
 
             if self.isKeypointPresent[RIGHT_ARM_KEYPOINTS].all():
-                #C7 Reference frame definition
-                zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
-                c7 = ( PbustDxU + PbustSxU ) / 2
-                l5 = ( PbustDxL + PbustSxL ) / 2
-                yAxis = ( c7 - l5 ) / np.linalg.norm( c7 - l5 )
-                yAxis = yAxis - np.dot(yAxis,zAxis)/(np.dot(zAxis,zAxis))*zAxis
-                yAxis = yAxis/np.linalg.norm(yAxis)
-                xAxis = np.cross(yAxis,zAxis)
-                matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
-                matR_camera_12=np.dot(np.array([xAxis,yAxis,zAxis]).T,np.array([[cos(np.pi), 0, sin(np.pi)],[0, 1, 0],[-sin(np.pi), 0, cos(np.pi)]]))
-                #self.showReferenceFrame(matR_camera_c7,c7,CAMERA_FRAME,"Frame_C7")
-                self.showReferenceFrame(matR_camera_12,PbustDxU,self.frame_id,self.camera_ns + '/' + "Frame_SpallaDx")
 
                 #Compongo le matrici di roto-traslazione
-                M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
+                # M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
                 M_camera_spallaDx = np.concatenate((np.concatenate((matR_camera_12,np.reshape(PbustDxU, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
-                matR_camera_l2_inv = np.linalg.inv(matR_camera_12)
+                matR_camera_12_inv = np.linalg.inv(matR_camera_12)
 
                 #Check che M_camera_spallaSx^-1 * PbustSxU = [0,0,0,1] (circa)
                 #print("Check M_camera_spallaSx^-1 * PbustSxU = [0,0,0,1]: ", np.dot(np.linalg.inv(M_camera_spallaSx),np.concatenate([PbustSxU,[1]])))
@@ -316,11 +312,11 @@ class KeypointsAdvancedFiltering():
 
                 if not self.isLimbTracked[1]:
                     # Initialize Kalman Filter of that limb
-                    self.isLimbTracked[1]=self.limbsFilters[1].initialize(yMeas,matR_camera_l2_inv[:,2])
+                    self.isLimbTracked[1]=self.limbsFilters[1].initialize(yMeas,matR_camera_12_inv[:,2])
                     y_observed = self.limbsFilters[1].getYAfterInitialize()
                 else:
                     # Update Kalman Filter of that limb
-                    y_observed=self.limbsFilters[1].update(yMeas,matR_camera_l2_inv[:,2])
+                    y_observed=self.limbsFilters[1].update(yMeas,matR_camera_12_inv[:,2])
 
                 G_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[0:3],[1]]))         # [xG yG zG 1]
                 P_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
@@ -342,22 +338,8 @@ class KeypointsAdvancedFiltering():
                 self.isLimbTracked[1]=False
 
             if self.isKeypointPresent[LEFT_LEG_KEYPOINTS].all():
-                #C7 Reference frame definition
-                zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
-                c7 = ( PbustDxU + PbustSxU ) / 2
-                l5 = ( PbustDxL + PbustSxL ) / 2
-                yAxis = ( c7 - l5 ) / np.linalg.norm( c7 - l5 )
-                yAxis = yAxis - np.dot(yAxis,zAxis)/(np.dot(zAxis,zAxis))*zAxis
-                yAxis = yAxis/np.linalg.norm(yAxis)
-                xAxis = np.cross(yAxis,zAxis)
-                matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
 
-                self.showReferenceFrame(matR_camera_c7,c7,self.frame_id,self.camera_ns + '/' + "Frame_C7")
-                self.showReferenceFrame(matR_camera_c7,PbustSxL,self.frame_id,self.camera_ns + '/' + "Frame_LegSx")
-
-                #Compongo le matrici di roto-traslazione
-
-                M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
+                # M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
                 M_camera_legSx = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(PbustSxL, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
                 matR_camera_c7_inv = np.linalg.inv(matR_camera_c7)
 
@@ -409,23 +391,11 @@ class KeypointsAdvancedFiltering():
             else:
                 self.isLimbTracked[2]=False
             if self.isKeypointPresent[RIGHT_LEG_KEYPOINTS].all():
-                #C7 Reference frame definition
-                zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
-                c7 = ( PbustDxU + PbustSxU ) / 2
-                l5 = ( PbustDxL + PbustSxL ) / 2
-                yAxis = ( c7 - l5 ) / np.linalg.norm( c7 - l5 )
-                yAxis = yAxis - np.dot(yAxis,zAxis)/(np.dot(zAxis,zAxis))*zAxis
-                yAxis = yAxis/np.linalg.norm(yAxis)
-                xAxis = np.cross(yAxis,zAxis)
-                matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
-                matR_camera_12=np.dot(np.array([xAxis,yAxis,zAxis]).T,np.array([[cos(np.pi), 0, sin(np.pi)],[0, 1, 0],[-sin(np.pi), 0, cos(np.pi)]]))
-                #self.showReferenceFrame(matR_camera_c7,c7,CAMERA_FRAME,"Frame_C7")
-                self.showReferenceFrame(matR_camera_12,PbustDxL,self.frame_id,self.camera_ns + '/' + "Frame_SpallaDx")
 
                 #Compongo le matrici di roto-traslazione
-                M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
+                # M_camera_c7 = np.concatenate((np.concatenate((matR_camera_c7,np.reshape(c7, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
                 M_camera_spallaDx = np.concatenate((np.concatenate((matR_camera_12,np.reshape(PbustDxL, (3,1))),axis=1),np.array([[0,0,0,1]])),axis=0)
-                matR_camera_l2_inv = np.linalg.inv(matR_camera_12)
+                matR_camera_12_inv = np.linalg.inv(matR_camera_12)
 
                 #Check che M_camera_spallaSx^-1 * PbustSxU = [0,0,0,1] (circa)
                 #print("Check M_camera_spallaSx^-1 * PbustSxU = [0,0,0,1]: ", np.dot(np.linalg.inv(M_camera_spallaSx),np.concatenate([PbustSxU,[1]])))
@@ -446,11 +416,11 @@ class KeypointsAdvancedFiltering():
 
                 if not self.isLimbTracked[3]:
                     # Initialize Kalman Filter of that limb
-                    self.isLimbTracked[3]=self.limbsFilters[3].initialize(yMeas,matR_camera_l2_inv[:,2])
+                    self.isLimbTracked[3]=self.limbsFilters[3].initialize(yMeas,matR_camera_12_inv[:,2])
                     y_observed = self.limbsFilters[3].getYAfterInitialize()
                 else:
                     # Update Kalman Filter of that limb
-                    y_observed=self.limbsFilters[3].update(yMeas,matR_camera_l2_inv[:,2])
+                    y_observed=self.limbsFilters[3].update(yMeas,matR_camera_12_inv[:,2])
                 #print("Covariance: ",self.limbsFilters[3].getCartesianCovariance())
                 G_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[0:3],[1]]))         # [xG yG zG 1]
                 P_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
@@ -544,9 +514,15 @@ class KeypointsAdvancedFiltering():
         jointMessage=JointState()
         jointMessage.header.stamp= rospy.Time.now()
         jointMessage.name=nameJ
-        jointMessage.position=positionJ
-        jointMessage.velocity=velocityJ
-        jointMessage.effort=effortJ
+        if JOINT_IN_DEG:
+            jointMessage.position=np.rad2deg(positionJ)
+            jointMessage.velocity=np.rad2deg(velocityJ)
+            jointMessage.effort=np.rad2deg(effortJ)
+        else:
+            jointMessage.position=positionJ
+            jointMessage.velocity=velocityJ
+            jointMessage.effort=effortJ
+
         return jointMessage
 
     def replaceKeypoint(self, indexesToChange,G,P):
