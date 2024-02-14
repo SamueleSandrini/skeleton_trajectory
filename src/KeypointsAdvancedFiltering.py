@@ -220,7 +220,7 @@ class KeypointsAdvancedFiltering():
             matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
             
             self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_C7")
-            self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_L5")
+            self.showReferenceFrame(matR_camera_c7,l5,self.frame_id, self.camera_ns + '/' + "Frame_L5")
 
             self.showReferenceFrame(matR_camera_c7,PbustSxU,self.frame_id, self.camera_ns + '/' + "Frame_ShoulderSx")
             
