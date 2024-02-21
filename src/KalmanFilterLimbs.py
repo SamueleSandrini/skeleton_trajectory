@@ -154,7 +154,7 @@ class KalmanFilterLimbs():
     def getLimbLength(self):
         return self.x_hat_new[12:]
 
-    def reset():
+    def reset(self):
         """
         Method for reset the kalman filter
         """
