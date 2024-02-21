@@ -158,8 +158,8 @@ class KalmanFilterLimbs():
         """
         Method for reset the kalman filter
         """
-        this.x_hat = np.zeros((N_STATES,))
-        this.t = 0
+        self.x_hat = np.zeros((N_STATES,))
+        self.t = 0
         self.initialized=False
 
     def hJacobian(self,q):
