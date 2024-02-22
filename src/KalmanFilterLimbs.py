@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.linalg import multi_dot
 from math import sin, cos, asin, acos, atan2
+from scipy.spatial.transform import Rotation as R
 
 #Constant
 N_STATES=14      # Number of states: [q1,q2,q3,q4,q1p,q2p,q3p,q4p,q1pp,q2pp,q3pp,q4pp]
@@ -154,12 +155,12 @@ class KalmanFilterLimbs():
     def getLimbLength(self):
         return self.x_hat_new[12:]
 
-    def reset():
+    def reset(self):
         """
         Method for reset the kalman filter
         """
-        this.x_hat = np.zeros((N_STATES,))
-        this.t = 0
+        self.x_hat = np.zeros((N_STATES,))
+        self.t = 0
         self.initialized=False
 
     def hJacobian(self,q):
@@ -210,6 +211,53 @@ class KalmanFilterLimbs():
         Fk[4] = self.l2*(sin(q[3])*(cos(q[2])*sin(q[0]) + cos(q[0])*sin(q[1])*sin(q[2])) - cos(q[0])*cos(q[1])*cos(q[3])) - self.l1*cos(q[0])*cos(q[1])
         Fk[5] = - self.l2*(cos(q[3])*sin(q[1]) + cos(q[1])*sin(q[2])*sin(q[3])) - self.l1*sin(q[1])
         return Fk
+    
+    def getForwardKinematics(self):
+        q = self.x_hat
+        Q_01 = R.from_euler('z', q[0], degrees=False).as_quat()
+        
+        Q_12 = R.from_euler('x', q[1], degrees=False).as_quat()
+        
+        T_22f = np.array([0, -self.l1, 0])
+        Q_2f3 = R.from_euler('y', q[2], degrees=False).as_quat()
+
+        Q_34 = R.from_euler('z', q[3], degrees=False).as_quat()
+        T_44f = np.array([0, -self.l2, 0])
+
+        null_translation = np.array([0,0,0])
+        null_quaternion = np.array([0,0,0,1])
+
+        frames = dict()
+        frames["shoulder_q1_rot"] = (Q_01, null_translation)
+        frames["shoulder_q2_rot"] = (Q_12, null_translation)
+        frames["elbow"] = (null_quaternion, T_22f)
+        frames["elbow_q3_rot"] = (Q_2f3, null_translation)
+        frames["elbow_q4_rot"] = (Q_34, null_translation)
+        frames["wrist"] = (null_quaternion, T_44f)
+
+        return frames   
+
+        # M_01 = np.eye(4)
+        # M_01[:3, :3] = R.from_euler('z', q[0], degrees=False).as_matrix()
+        
+        # M_12 = np.eye(4)
+        # M_12[:3, :3] = R.from_euler('x', q[1], degrees=False).as_matrix()
+
+        # T_22f = np.eye(4)
+        # T_22f[:3,-1] = [0, -self.l1, 0]
+        
+        # M_2f3 = np.eye(4)
+        # M_2f3[:3, :3] = R.from_euler('y', q[2], degrees=False).as_matrix()
+
+        # M_34 = np.eye(4)
+        # M_34[:3, :3] = R.from_euler('z', q[3], degrees=False).as_matrix()
+        
+        # T_44f = np.eye(4)
+        # T_44f[:3,-1] = [0, -self.l2, 0]
+    
+        # M_shoulder_wrist = M_01 @ M_12 @ T_22f @ M_34 @ T_44f
+            
+        
 
     def inverseKinematic(self,X):
         """

@@ -20,7 +20,7 @@ KEYPOINTS_FILTERED = 'keypoints_filtered'
 SKELETON_FILTERED = 'skeleton_filtered'
 SKELETON_FILTERED_ARRAY = 'poses'    #/skeleton_filtered_PoseArray
 LIMBS_FILTERED = 'limbs_filtered'
-JOINT = 'jointLimb'
+JOINT = 'limb_joint'
 JOINT_IN_DEG = False
 #CAMERA_FRAME = "camera_color_optical_frame"
 
@@ -219,16 +219,20 @@ class KeypointsAdvancedFiltering():
             xAxis = np.cross(yAxis,zAxis)
             matR_camera_c7=np.array([xAxis,yAxis,zAxis]).T
             
-            self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "Frame_C7")
-            self.showReferenceFrame(matR_camera_c7,l5,self.frame_id, self.camera_ns + '/' + "Frame_L5")
+            self.showReferenceFrame(matR_camera_c7,c7,self.frame_id, self.camera_ns + '/' + "neck")
+            self.showReferenceFrame(matR_camera_c7,l5,self.frame_id, self.camera_ns + '/' + "hip")
 
-            self.showReferenceFrame(matR_camera_c7,PbustSxU,self.frame_id, self.camera_ns + '/' + "Frame_ShoulderSx")
+            shoulder_sx_frame_name = self.camera_ns + '/' + "left_shoulder"
+            shoulder_dx_frame_name = self.camera_ns + '/' + "right_shoulder"
+            self.showReferenceFrame(matR_camera_c7,PbustSxU,self.frame_id, shoulder_sx_frame_name)
             
             matR_camera_12=np.dot(np.array([xAxis,yAxis,zAxis]).T,np.array([[cos(np.pi), 0, sin(np.pi)],[0, 1, 0],[-sin(np.pi), 0, cos(np.pi)]]))
-            self.showReferenceFrame(matR_camera_12,PbustDxU,self.frame_id,self.camera_ns + '/' + "Frame_ShoulderDx")
+            self.showReferenceFrame(matR_camera_12,PbustDxU,self.frame_id, shoulder_dx_frame_name)
 
-            self.showReferenceFrame(matR_camera_c7,PbustSxL,self.frame_id,self.camera_ns + '/' + "Frame_LegSx")
-            self.showReferenceFrame(matR_camera_12,PbustDxL,self.frame_id,self.camera_ns + '/' + "Frame_LegDx")
+            leg_sx_frame_name = self.camera_ns + '/' + "left_hip"
+            leg_dx_frame_name =  self.camera_ns + '/' + "right_hip"
+            self.showReferenceFrame(matR_camera_c7,PbustSxL,self.frame_id, leg_sx_frame_name)
+            self.showReferenceFrame(matR_camera_12,PbustDxL,self.frame_id, leg_dx_frame_name)
 
 
             if self.isKeypointPresent[LEFT_ARM_KEYPOINTS].all():
@@ -262,6 +266,8 @@ class KeypointsAdvancedFiltering():
                 else:
                     # Update Kalman Filter of that limb
                     y_observed=self.limbsFilters[0].update(yMeas,matR_camera_c7_inv[:,2])
+                frames_to_publish = self.limbsFilters[0].getForwardKinematics()
+                self.showLimbFrames(shoulder_sx_frame_name,frames_to_publish)
                 G_cam_obs=np.dot(M_camera_spallaSx,np.concatenate([y_observed[0:3],[1]]))         # [xG yG zG 1]
                 P_cam_obs=np.dot(M_camera_spallaSx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
 
@@ -276,7 +282,7 @@ class KeypointsAdvancedFiltering():
                 self.pubLimbsFiltered.publish(self.limbs)
 
                 #Joint Message
-                jointMessage=self.buildJointMessage(["LeftArm_joint_1","LeftArm_joint_2","LeftArm_joint_3","LeftArm_joint_4"],self.limbsFilters[0].getJointsPosition(),self.limbsFilters[0].getJointsVelocity(),self.limbsFilters[0].getJointsAcceleration())
+                jointMessage=self.buildJointMessage(["left_arm_joint_1","left_arm_joint_2","left_arm_joint_3","left_arm_joint_4"],self.limbsFilters[0].getJointsPosition(),self.limbsFilters[0].getJointsVelocity(),self.limbsFilters[0].getJointsAcceleration())
                 self.pubJoint.publish(jointMessage)
                 #Limbs length
                 #lengthMessage=Float64MultiArray()
@@ -317,6 +323,8 @@ class KeypointsAdvancedFiltering():
                 else:
                     # Update Kalman Filter of that limb
                     y_observed=self.limbsFilters[1].update(yMeas,matR_camera_12_inv[:,2])
+                frames_to_publish = self.limbsFilters[1].getForwardKinematics()
+                self.showLimbFrames(shoulder_dx_frame_name,frames_to_publish)
 
                 G_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[0:3],[1]]))         # [xG yG zG 1]
                 P_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
@@ -331,7 +339,7 @@ class KeypointsAdvancedFiltering():
                 self.pubLimbsFiltered.publish(self.limbs)
 
                 #Joint Message
-                jointMessage=self.buildJointMessage(["RightArm_joint_1","RightArm_joint_2","RightArm_joint_3","RightArm_joint_4"],self.limbsFilters[1].getJointsPosition(),self.limbsFilters[1].getJointsVelocity(),self.limbsFilters[1].getJointsAcceleration())
+                jointMessage=self.buildJointMessage(["right_arm_joint_1","right_arm_joint_2","right_arm_joint_3","right_arm_joint_4"],self.limbsFilters[1].getJointsPosition(),self.limbsFilters[1].getJointsVelocity(),self.limbsFilters[1].getJointsAcceleration())
                 self.pubJoint.publish(jointMessage)
                 self.replaceKeypoint(RIGHT_ARM_KEYPOINTS[1:],G_cam_obs,P_cam_obs)
             else:
@@ -369,6 +377,9 @@ class KeypointsAdvancedFiltering():
                 else:
                     # Update Kalman Filter of that limb
                     y_observed=self.limbsFilters[2].update(yMeas,matR_camera_c7_inv[:,2])
+                frames_to_publish = self.limbsFilters[2].getForwardKinematics()
+                self.showLimbFrames(leg_sx_frame_name,frames_to_publish)
+
                 G_cam_obs=np.dot(M_camera_legSx,np.concatenate([y_observed[0:3],[1]]))         # [xG yG zG 1]
                 P_cam_obs=np.dot(M_camera_legSx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
 
@@ -382,7 +393,7 @@ class KeypointsAdvancedFiltering():
                 self.pubLimbsFiltered.publish(self.limbs)
 
                 #Joint Message
-                jointMessage=self.buildJointMessage(["LeftLeg_joint_1","LeftLeg_joint_2","LeftLeg_joint_3","LeftLeg_joint_4"],self.limbsFilters[2].getJointsPosition(),self.limbsFilters[2].getJointsVelocity(),self.limbsFilters[2].getJointsAcceleration())
+                jointMessage=self.buildJointMessage(["left_leg_joint_1","left_leg_joint_2","left_leg_joint_3","left_leg_joint_4"],self.limbsFilters[2].getJointsPosition(),self.limbsFilters[2].getJointsVelocity(),self.limbsFilters[2].getJointsAcceleration())
                 self.pubJoint.publish(jointMessage)
                 #Limbs length
                 #lengthMessage=Float64MultiArray()
@@ -421,6 +432,9 @@ class KeypointsAdvancedFiltering():
                 else:
                     # Update Kalman Filter of that limb
                     y_observed=self.limbsFilters[3].update(yMeas,matR_camera_12_inv[:,2])
+                frames_to_publish = self.limbsFilters[3].getForwardKinematics()
+                self.showLimbFrames(leg_dx_frame_name,frames_to_publish)
+
                 #print("Covariance: ",self.limbsFilters[3].getCartesianCovariance())
                 G_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[0:3],[1]]))         # [xG yG zG 1]
                 P_cam_obs=np.dot(M_camera_spallaDx,np.concatenate([y_observed[3:],[1]]))          # [xG yG zG 1]
@@ -435,7 +449,7 @@ class KeypointsAdvancedFiltering():
                 self.pubLimbsFiltered.publish(self.limbs)
 
                 #Joint Message
-                jointMessage=self.buildJointMessage(["RightLeg_joint_1","RightLeg_joint_2","RightLeg_joint_3","RightLeg_joint_4"],self.limbsFilters[3].getJointsPosition(),self.limbsFilters[3].getJointsVelocity(),self.limbsFilters[3].getJointsAcceleration())
+                jointMessage=self.buildJointMessage(["right_leg_joint_1","right_leg_joint_2","right_leg_joint_3","right_leg_joint_4"],self.limbsFilters[3].getJointsPosition(),self.limbsFilters[3].getJointsVelocity(),self.limbsFilters[3].getJointsAcceleration())
                 self.pubJoint.publish(jointMessage)
                 self.replaceKeypoint(RIGHT_LEG_KEYPOINTS[1:],G_cam_obs,P_cam_obs)
             else:
@@ -503,6 +517,32 @@ class KeypointsAdvancedFiltering():
         t0TS.transform=t0
         br = tf2_ros.TransformBroadcaster()
         br.sendTransform(t0TS)
+    
+    def showLimbFrames(self,base_frame_name,frames):
+        previous_frame = None
+        
+        for frame_name, frame in frames.items():
+            t0=Transform()
+            t0TS=TransformStamped()
+            t0TS.header.stamp= rospy.Time.now()
+            
+            quat = frame[0]
+            trans = frame[1]
+            t0.rotation = Quaternion(*quat)
+            t0.translation = Vector3(*trans)
+            
+            if previous_frame is None:
+                t0TS.header.frame_id = base_frame_name
+            else:
+                t0TS.header.frame_id = previous_frame
+            frame_name = f"{base_frame_name}_{frame_name}"
+            
+            t0TS.child_frame_id = frame_name
+            previous_frame = frame_name
+            
+            t0TS.transform=t0
+            br = tf2_ros.TransformBroadcaster()
+            br.sendTransform(t0TS)
 
     def buildJointMessage(self,nameJ,positionJ,velocityJ,effortJ):
         """
