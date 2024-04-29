@@ -33,6 +33,8 @@ SKELETON_FILTERED_ARRAY = 'poses'
 SKELETON_FILTERED = 'skeleton_filtered'
 KEYPOINTS_FILTERED = 'keypoints_filtered'
 
+# Constant for computing the average of the depth values in a window around the keypoint
+DISTANCE_WINDOW_HALF_SIZE = 3
 
 # Costant loginfo
 PARAMETERS_LOG = 'Camera Parameters acquired \n  Parameters: {}'
@@ -136,14 +138,25 @@ class RealSense():
                     x = floor(self.intrinsics.width * landmark.x)    # Column
                     y = floor(self.intrinsics.height * landmark.y)  # Row
 
-                    depthPixel = self.frameDistance[y,x]
-
-                    if (depthPixel<0.1):
-                        print("Keypoint number: ", idx, "has zero depth.")
+                    # depthPixel = self.frameDistance[y,x]
+                    
+                    y_min = min(max(0, y - DISTANCE_WINDOW_HALF_SIZE), self.intrinsics.height - 1)
+                    y_max = min(max(0, y + DISTANCE_WINDOW_HALF_SIZE), self.intrinsics.height - 1)
+                    x_min = min(max(0, x - DISTANCE_WINDOW_HALF_SIZE), self.intrinsics.width - 1)
+                    x_max = min(max(0, x + DISTANCE_WINDOW_HALF_SIZE), self.intrinsics.width - 1)
+                    
+                    roi = self.depthFrame[y_min:y_max,x_min:x_max]
+                    masked_roi = np.ma.masked_invalid(roi)
+                    if np.any(np.isfinite(masked_roi)) and np.any(masked_roi != 0):
+                        average_z_coord = np.mean(masked_roi[masked_roi>0])
+                    else:
                         continue
+                    # if (depthPixel<0.1):
+                    #     print("Keypoint number: ", idx, "has zero depth.")
+                    #     continue
 
                     # Deprojection : Image frame -> Camera frame (camera_color_optical_frame)
-                    deprojection=rs2.rs2_deproject_pixel_to_point(self.intrinsics,[x,y], depthPixel)
+                    deprojection=rs2.rs2_deproject_pixel_to_point(self.intrinsics,[x,y], average_z_coord)
 
                     # Add index marker on list of presences
                     indexesPres.append(idx)
