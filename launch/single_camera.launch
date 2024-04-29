@@ -1,13 +1,24 @@
 <launch>
 
   <!-- I need to declare that this launch need these args -->
-  <arg name="kalman_base"/>
-  <arg name="camera_ns"/>
+  <arg name="kalman_base" default="true"/>
+  <arg name="camera_ns" default="camera"/>
   <arg name="camera_window" default="false"/>
+
+  <arg name="camera_color_topic_name" default="color/image_raw"/>
+  <arg name="camera_depth_topic_name" default="/aligned_depth_to_color/image_raw"/>
+  <arg name="camera_info_topic_name" default="/aligned_depth_to_color/camera_info"/>
+  <arg name="approx_sync" default="false"/>
+
 
   <node name="$(arg camera_ns)_acquisition_identification" pkg="skeleton_trajectory" type="mainRealSense.py"  output="screen" >
     <param name="camera_ns" type="str" value="$(arg camera_ns)" />
     <param name="camera_window" type="bool" value="$(arg camera_window)" />
+    
+    <param name="camera_color_topic_name" type="str" value="$(arg camera_color_topic_name)" />
+    <param name="camera_depth_topic_name" type="str" value="$(arg camera_depth_topic_name)"/>
+    <param name="camera_info_topic_name" type="str" value="$(arg camera_info_topic_name)" />
+    <param name="approx_sync" type="bool" value="$(arg approx_sync)"/>
   </node>
 
   <node unless="$(arg kalman_base)" name="$(arg camera_ns)_kinematic_kalman" pkg="skeleton_trajectory" type="mainKalmanLimbs.py"  output="screen" >

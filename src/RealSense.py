@@ -35,7 +35,7 @@ KEYPOINTS_FILTERED = 'keypoints_filtered'
 
 
 # Costant loginfo
-PARAMETERS_LOG = 'Camera Parameters acquired \n  Parameters:{}'
+PARAMETERS_LOG = 'Camera Parameters acquired \n  Parameters: {}'
 
 class RealSense():
     """
@@ -46,7 +46,7 @@ class RealSense():
         """
         Class builder
         @param -
-        @return RealSense RealSense object
+        @return RealSense object
         """
         self.bridge = CvBridge()
         self.colorFrame = None
@@ -58,19 +58,21 @@ class RealSense():
         self.pose=self.mp_pose.Pose(min_detection_confidence=0.8,min_tracking_confidence=0.5)
 
         # Get private param
-
         self.camera_ns = rospy.get_param('~camera_ns')
         self.camera_window = rospy.get_param('~camera_window')
+        self.camera_color_topic_name = rospy.get_param('~camera_color_topic_name', COLOR_FRAME_TOPIC)
+        self.camera_depth_topic_name = rospy.get_param('~camera_depth_topic_name', DEPTH_ALIGNED_TOPIC)
+        self.camera_info_topic_name = rospy.get_param('~camera_info_topic_name', CAMERA_INFO_TOPIC)
+        self.use_approx_sync = rospy.get_param('~approx_sync', False)
 
         # Frequency measurement
         self.pubIterations = rospy.Publisher(self.camera_ns+'/'+FREQ_MEAS_PUB, Int64, queue_size=10)
         self.iterations=0
 
         # Publischer skeleton KeyPoints and connections
-        self.pubMarker = rospy.Publisher(self.camera_ns+'/'+SKELETON_MARKER_PUB, MarkerArray, queue_size = 100)
-        self.pubSkeleton = rospy.Publisher(self.camera_ns+'/'+SKELETON_PUB, Marker, queue_size = 100)
-        #It can be usefull for compatibility
-
+        self.pubMarker = rospy.Publisher(f"{self.camera_ns}/{SKELETON_MARKER_PUB}", MarkerArray, queue_size = 100)
+        self.pubSkeleton = rospy.Publisher(f"{self.camera_ns}/{SKELETON_PUB}", Marker, queue_size = 100)
+        
         # Management camera pyrealsense2
         self.intrinsics = None
         self.cameraInfoReceived = False
@@ -81,7 +83,7 @@ class RealSense():
         self.pubMarkerFiltered = rospy.Publisher(self.camera_ns+'/'+KEYPOINTS_FILTERED, Marker, queue_size = 100)
 
 
-    def callback(self,frameRgb,frameDepth):
+    def callback(self, frameRgb, frameDepth):
         """
         Callback method to retrieve the content of the topic and convert it in cv2 format. Identify human KeyPoints.
         @param frameRgb : camera msg rgb
@@ -92,9 +94,7 @@ class RealSense():
         self.depthFrame = self.bridge.imgmsg_to_cv2(frameDepth, desired_encoding="passthrough").copy()
         self.frameDistance = self.bridge.imgmsg_to_cv2(frameDepth, desired_encoding="32FC1")
 
-        #cv2.cvtColor(cv_image_norm,cv2.COLOR_GRAY2RGB)
-
-
+        # cv2.cvtColor(cv_image_norm,cv2.COLOR_GRAY2RGB)
 
         # KeyPoints Human identification
         results = self.pose.process(self.colorFrame)
@@ -269,10 +269,12 @@ class RealSense():
         elif cameraInfo.distortion_model == 'equidistant':
             self.intrinsics.model = rs2.distortion.kannala_brandt4
         self.intrinsics.coeffs = [i for i in cameraInfo.D]
+
+
         self.cameraInfoReceived = True
 
-        #Reference frame
-        self.frame_id=cameraInfo.header.frame_id
+        # Reference frame
+        self.frame_id = cameraInfo.header.frame_id
 
     def waitCameraInfo(self):
         """
@@ -287,11 +289,16 @@ class RealSense():
         """
         Method for acquiring in syncronization way rgb and depth frame
         """
-        self.subcriberColorFrame = message_filters.Subscriber(self.camera_ns+'/'+COLOR_FRAME_TOPIC, Image)
-        self.subcriberDepthFrame = message_filters.Subscriber(self.camera_ns+'/'+DEPTH_ALIGNED_TOPIC, Image)
-        # Subscriber Synchronization
-        subSync = message_filters.TimeSynchronizer([self.subcriberColorFrame, self.subcriberDepthFrame], queue_size=10)
-        #Call callback sincronized
+        self.subcriberColorFrame = message_filters.Subscriber(f"{self.camera_ns}/{self.camera_color_topic_name}", Image)
+        self.subcriberDepthFrame = message_filters.Subscriber(f"{self.camera_ns}/{self.camera_depth_topic_name}", Image)
+        
+        # Subscriber Synchronization or partial synchronization
+        if self.use_approx_sync:
+            subSync = message_filters.ApproximateTimeSynchronizer([self.subcriberColorFrame, self.subcriberDepthFrame], queue_size=10, slop=0.1)
+        else:
+            subSync = message_filters.TimeSynchronizer([self.subcriberColorFrame, self.subcriberDepthFrame], queue_size=10)
+        
+        # Call callback sincronized
         subSync.registerCallback(self.callback)
 
         rospy.spin()
@@ -301,7 +308,7 @@ class RealSense():
         """
         Method for acquiring only rgb-frame
         """
-        self.subcriberColor= rospy.Subscriber(self.camera_ns + '/' + COLOR_FRAME_TOPIC, Image, self.callbackOnlyRgb, queue_size=1)
+        self.subcriberColor = rospy.Subscriber(f"{self.camera_ns}/{self.camera_color_topic_name}", Image, self.callbackOnlyRgb, queue_size=1)
 
     def showImage(self,nameWindowRgb,nameWindowDepth):
         """
@@ -322,7 +329,8 @@ class RealSense():
         """
         Subscriber for camera parameter
         """
-        self.sub_info = rospy.Subscriber(self.camera_ns + '/' + CAMERA_INFO_TOPIC,CameraInfo,self.cameraInfoCallback)
+        self.sub_info = rospy.Subscriber(f"{self.camera_ns}/{self.camera_info_topic_name}", CameraInfo, self.cameraInfoCallback)
+
     def stop(self):
         """
         Method to disconnect the subscribers to release memory and avoid filling up the queue.
@@ -385,3 +393,4 @@ class RealSense():
                 return True
         """
         return False
+

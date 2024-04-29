@@ -14,7 +14,31 @@ The entire framework can be executed in a simplified manner for a user by means 
 roslaunch skeleton_trajectory skeleton_trajectory.launch
 ```
 ## Launch parameters
-The following parameter is available:
+There are two available launch file one for single camera acquisition and tracking (single_camera.launch) and another one for managing multiple cameras acquisition and tracking (multipla.launch) that incorporates the single camera launch by specifing the proper camera namespace and eventually differente parameters.
+
+## Single Camera Launch File
+
+The `single_camera.launch` launch launch file is designed to handle the acquisition and skeleton tracking of a single camera. It includes parameters for specifying camera namespaces, topics for color and depth images, camera info, and synchronization options. Additionally, it allows toggling the usage of a Kalman filter in a base version (each keypoints filtered indipendently) or with an advanced option (Kalman Filter with a kinematic model to the limbs) for tracking. Users can specify parameters that are explained in the following table:
+
+### Parameters
+
+| Parameter                | Description                                                      |
+|--------------------------|------------------------------------------------------------------|
+| `kalman_base`            | Enables or disables the Kalman filter for tracking.              |
+| `camera_ns`              | Namespace for the camera.                                        |
+| `camera_window`          | Specifies whether to display a GUI window for camera visualization.|
+| `camera_color_topic_name` | Topic name for color images.                                     |
+| `camera_depth_topic_name` | Topic name for depth images.                                     |
+| `camera_info_topic_name`  | Topic name for camera information.                               |
+| `approx_sync`             | Enables or disables the approximate synchronization of color and depth topics(*). |
+
+(*) By default it is set to False and this means that the colour and depth frame must be synchronised (best case). However, sometimes the frames may be slightly out of synchronisation and therefore approximate synchronisation may have to be used.
+
+### Multi-Camera Launch File
+
+The `skeleton_trajectory.launch` launch file extends functionality to manage multiple cameras for acquisition and tracking. It includes the `single_camera.launch` file multiple times, each with different namespaces for individual cameras. The users parameters are the same of the `single_camera.launch`
+
+In more details:
 - **kalmanBase**: it specifies the filter typology.
   * <code>kalmanBase:=True</code> is the default condition and performs filtering with the points managed independently of each other (with assumption of constant acceleration in cartesian space).
   * <code>kalmanBase:=False</code> performed filtering with the model of the limb kinematics of person.

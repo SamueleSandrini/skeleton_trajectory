@@ -1,26 +1,21 @@
 #! /usr/bin/env python3
 
 import rospy
-from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import CameraInfo, Image
 from RealSense import RealSense
-import cv2
-import mediapipe as mp
 
-#import matplotlib.pyplot as plt
 def my_hook():
-    rospy.loginfo("Programma terminato")
+    rospy.loginfo("Shutting down node...")
 
 def main():
     # Subscriber node
-        rospy.init_node("acquisition_identification",anonymous=True)
+    rospy.init_node("acquisition_node",anonymous=True)
 
-        #Realsense object to menage acquisition
-        realsense=RealSense()
-        realsense.getCameraParam()  #For subscribe camera info usefull for Deprojection
-        realsense.waitCameraInfo()
-        while not rospy.is_shutdown():
-            realsense.acquire()
+    # Realsense object to menage acquisition
+    realsense=RealSense()
+    realsense.getCameraParam()  # For subscribe camera info usefull for Deprojection
+    realsense.waitCameraInfo()
+    while not rospy.is_shutdown():
+        realsense.acquire()
 
 
 if __name__=="__main__":
