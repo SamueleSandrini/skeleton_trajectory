@@ -34,7 +34,7 @@ SKELETON_FILTERED = 'skeleton_filtered'
 KEYPOINTS_FILTERED = 'keypoints_filtered'
 
 # Constant for computing the average of the depth values in a window around the keypoint
-DISTANCE_WINDOW_HALF_SIZE = 3
+DISTANCE_WINDOW_HALF_SIZE = 5
 
 # Costant loginfo
 PARAMETERS_LOG = 'Camera Parameters acquired \n  Parameters: {}'

@@ -6,8 +6,8 @@
   <arg name="camera_window" default="false"/>
 
   <arg name="camera_color_topic_name" default="color/image_raw"/>
-  <arg name="camera_depth_topic_name" default="/aligned_depth_to_color/image_raw"/>
-  <arg name="camera_info_topic_name" default="/aligned_depth_to_color/camera_info"/>
+  <arg name="camera_depth_topic_name" default="aligned_depth_to_color/image_raw"/>
+  <arg name="camera_info_topic_name" default="aligned_depth_to_color/camera_info"/>
   <arg name="approx_sync" default="false"/>
 
 
