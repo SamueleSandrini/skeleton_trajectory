@@ -19,6 +19,7 @@ SKELETON_MARKER_SUB = 'skeleton_marker'
 KEYPOINTS_FILTERED = 'keypoints_filtered'
 SKELETON_FILTERED = 'skeleton_filtered'
 SKELETON_FILTERED_ARRAY = 'poses'    #/skeleton_filtered_PoseArray
+CENTROID_ARRAY = 'centroids'
 LIMBS_FILTERED = 'limbs_filtered'
 JOINT = 'limb_joint'
 JOINT_IN_DEG = False
@@ -88,7 +89,9 @@ class KeypointsAdvancedFiltering():
         self.listOfIndexesPres = []
 
         self.pubSkeletonFiltered = rospy.Publisher(self.camera_ns + '/' + SKELETON_FILTERED, Marker, queue_size = 100)
-        self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns + '/' + SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
+        self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns + '/' + SKELETON_FILTERED_ARRAY, PoseArray, queue_size = 100)
+
+        self.pubCentroidArray = rospy.Publisher(self.camera_ns + '/' + CENTROID_ARRAY, PoseArray, queue_size = 100)
 
         #Publisher for limbs filtering
         self.pubLimbsFiltered = rospy.Publisher(self.camera_ns + '/' + LIMBS_FILTERED, Marker, queue_size = 100)
@@ -208,7 +211,7 @@ class KeypointsAdvancedFiltering():
             PbustSxU=self.fromKeypointToPoint(self.listKeypoints[self.listOfIndexesPres.index(11)])
             PbustDxL=self.fromKeypointToPoint(self.listKeypoints[self.listOfIndexesPres.index(24)])
             PbustSxL=self.fromKeypointToPoint(self.listKeypoints[self.listOfIndexesPres.index(23)])
-            
+
             #C7 Reference frame definition
             zAxis = ( PbustDxU - PbustSxU ) / np.linalg.norm( PbustDxU - PbustSxU )
             c7 = ( PbustDxU + PbustSxU ) / 2
@@ -462,6 +465,26 @@ class KeypointsAdvancedFiltering():
         skeletonArrayFiltered.poses = self.listKeypoints
         self.pubSkeletonFilteredArray.publish(skeletonArrayFiltered)
 
+        # mean of keypoints and publish on /centroids
+        centroid = PoseArray()
+        centroid.header.stamp = skeletonArrayFiltered.header.stamp
+        centroid.header.frame_id = self.frame_id
+        centroid_pose = Pose()
+        if len(skeletonArrayFiltered.poses) > 0:
+            centroid_mean_x = skeletonArrayFiltered.poses[0].position.x
+            centroid_mean_y = skeletonArrayFiltered.poses[0].position.y
+            centroid_mean_z = skeletonArrayFiltered.poses[0].position.z
+            for idx, kp in enumerate(skeletonArrayFiltered.poses[1:]):
+                idx1 = idx+1
+                centroid_mean_x = (centroid_mean_x *idx1 + kp.position.x) / (idx1 + 1)
+                centroid_mean_y = (centroid_mean_y *idx1 + kp.position.y) / (idx1 + 1)
+                centroid_mean_z = (centroid_mean_z *idx1 + kp.position.z) / (idx1 + 1)
+
+            centroid_pose.position.x = centroid_mean_x
+            centroid_pose.position.y = centroid_mean_y
+            centroid_pose.position.z = centroid_mean_z
+            centroid.poses.append(centroid_pose)
+            self.pubCentroidArray.publish(centroid)
 
         #Iterate connections between keypoints: skeleton information (plot)
         n=0

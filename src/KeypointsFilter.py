@@ -19,6 +19,9 @@ SKELETON_FILTERED_ARRAY = 'poses'
 KEYPOINT_VELOCITY = 'keypoint_velocity'
 VARIANCE_MARKER = 'marker_variance'
 
+CENTROID_ARRAY = 'centroids'
+
+
 N_KEYPOINTS = 33
 
 class KeypointsFilter():
@@ -78,6 +81,9 @@ class KeypointsFilter():
 
         self.pubSkeletonFiltered = rospy.Publisher(self.camera_ns + '/'+ SKELETON_FILTERED, Marker, queue_size = 100)
         self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns + '/'+ SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
+
+        self.pubCentroidArray = rospy.Publisher(self.camera_ns + '/' + CENTROID_ARRAY, PoseArray, queue_size = 100)
+
 
         #Publisher Keypoint velocity
         self.pubKeypointVelocity = rospy.Publisher(self.camera_ns + '/'+ KEYPOINT_VELOCITY, TwistStamped, queue_size = 100)
@@ -203,6 +209,29 @@ class KeypointsFilter():
         #print(self.listKeypoints)
         skeletonArrayFiltered.poses = self.listKeypoints
         self.pubSkeletonFilteredArray.publish(skeletonArrayFiltered)
+
+        # mean of keypoints and publish on /centroids
+        centroid = PoseArray()
+        centroid.header.stamp = skeletonArrayFiltered.header.stamp
+        centroid.header.frame_id = self.frame_id
+        centroid_pose = Pose()
+        if len(skeletonArrayFiltered.poses) > 0:
+            centroid_mean_x = skeletonArrayFiltered.poses[0].position.x
+            centroid_mean_y = skeletonArrayFiltered.poses[0].position.y
+            centroid_mean_z = skeletonArrayFiltered.poses[0].position.z
+            for idx, kp in enumerate(skeletonArrayFiltered.poses[1:]):
+                idx1 = idx + 1
+                centroid_mean_x = (centroid_mean_x * idx1 + kp.position.x) / (idx1 + 1)
+                centroid_mean_y = (centroid_mean_y * idx1 + kp.position.y) / (idx1 + 1)
+                centroid_mean_z = (centroid_mean_z * idx1 + kp.position.z) / (idx1 + 1)
+
+            centroid_pose.position.x = centroid_mean_x
+            centroid_pose.position.y = centroid_mean_y
+            centroid_pose.position.z = centroid_mean_z
+            centroid.poses.append(centroid_pose)
+            self.pubCentroidArray.publish(centroid)
+
+
         #Iterate connections between keypoints: skeleton information (plot)
         n=0
 
