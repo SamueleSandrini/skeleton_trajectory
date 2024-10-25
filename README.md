@@ -27,14 +27,14 @@ The following parameters are available:
   python -m venv /path/to/new/virtual/environment
   ```
 - [Install requirements](https://stackoverflow.com/questions/7225900/how-can-i-install-packages-using-pip-according-to-the-requirements-txt-file-from) (pip or pip3) (check path to requirements): 
-```bash
-pip3 install -r requirements.txt
-```
+  ```bash
+  pip3 install -r requirements.txt
+  ```
 - Activate the virtual environment: 
-```bash
-source path_to_venv/bin/activate
-```
-
-## Maintainers
+  ```bash
+  source path_to_venv/bin/activate
+  ```
+  
+## 👥 Maintainers
 - Samuele Sandrini, [SamueleSandrini](https://github.com/SamueleSandrini)
 - Manuel Beschi, [ManuelBeschi](https://github.com/ManuelBeschi)
