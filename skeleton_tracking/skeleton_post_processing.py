@@ -55,7 +55,6 @@ class SkeletonDetection(PostProcessing):
   def initialize(self, camera_info):
     self.camera_info = camera_info
     self.internal_node.get_logger().info('Skeleton detection running ...')
-    self.camera_info.header.frame_id = 'head_front_camera_rgb_optical_frame'
 
   def build_skeleton_topology_msg(self, indexes, keypoints):
     skeleton = Marker()
