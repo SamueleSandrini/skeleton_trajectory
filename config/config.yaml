@@ -1,0 +1,11 @@
+camera_node:
+  ros__parameters:
+    color_image_topic: "/head_front_camera/rgb/image_raw"
+    depth_image_topic: "/head_front_camera/depth_registered/image_raw"
+    camera_info_topic: "/head_front_camera/rgb/camera_info"
+    frames_approx_sync: false
+
+    post_processing:
+      package: "skeleton_tracking"
+      module: "skeleton_post_processing"
+      class: "SkeletonDetection"

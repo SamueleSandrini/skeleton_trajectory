@@ -1,0 +1,5 @@
+repositories:
+  vision_system:
+    type: git
+    url: https://github.com/JRL-CARI-CNR-UNIBS/vision_system
+    version: main
