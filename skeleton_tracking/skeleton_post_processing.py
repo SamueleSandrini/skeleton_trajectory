@@ -30,10 +30,11 @@ EPS = 0.1
 def de_normalize_keypoint(keypoint, width, height):
   return floor(keypoint.x * width), floor(keypoint.y * height)
 
-def initialize_pose_detector():
+def initialize_pose_detector(min_detection_confidence = 0.8,
+                             min_tracking_confidence = 0.5):
   pose_detector = pose_detector = mp.solutions.pose.Pose(
-    min_detection_confidence=0.8,
-    min_tracking_confidence=0.5
+    min_detection_confidence=min_detection_confidence,
+    min_tracking_confidence=min_tracking_confidence
   )
   return pose_detector
 
@@ -45,11 +46,20 @@ class SkeletonDetection(PostProcessing):
     self.skeleton_topology_publisher = self.internal_node.create_publisher(Marker, 'skeleton', 10)
     self.debug_publisher = self.internal_node.create_publisher(Image, 'debug_skeleton_detection_image', 10)
 
-    self.pose_detector = initialize_pose_detector()
-    self.camera_info = None
     
-    self.internal_node.declare_parameter('skeleton_detection_node.debug', True)
-    self.debug = self.internal_node.get_parameter('skeleton_detection_node.debug').value
+    self.internal_node.declare_parameter('skeleton_detection_node.debug_topic', True)
+
+    self.internal_node.declare_parameter('skeleton_detection_node.min_detection_confidence', 0.8)
+    self.internal_node.declare_parameter('skeleton_detection_node.min_tracking_confidence', 0.5)
+
+    self.debug = self.internal_node.get_parameter('skeleton_detection_node.debug_topic').value
+    self.min_detection_confidence = self.internal_node.get_parameter('skeleton_detection_node.min_detection_confidence').value
+    self.min_tracking_confidence = self.internal_node.get_parameter('skeleton_detection_node.min_tracking_confidence').value
+
+    self.camera_info = None
+    self.pose_detector = initialize_pose_detector(self.min_detection_confidence, 
+                                                  self.min_tracking_confidence)
+
     self.cv_bridge = CvBridge()
 
   def initialize(self, camera_info):
@@ -132,7 +142,8 @@ class SkeletonDetection(PostProcessing):
       marker_array.markers.append(marker)
     
     if self.is_not_person(indexes, keypoints_3d):
-      self.pose_detector = initialize_pose_detector()
+      self.pose_detector = initialize_pose_detector(self.min_detection_confidence, 
+                                                    self.min_tracking_confidence)
     else:
       self.skeleton_marker_publisher.publish(marker_array)
       self.skeleton_topology_publisher.publish(

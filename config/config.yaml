@@ -9,3 +9,9 @@ camera_node:
       package: "skeleton_tracking"
       module: "skeleton_post_processing"
       class: "SkeletonDetection"
+
+    skeleton_detection_node:
+      
+      debug_topic: True
+
+
