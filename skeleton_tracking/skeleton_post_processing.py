@@ -19,7 +19,7 @@ from vision_system.vision_system_utils import deproject_pixel_to_point
 import mediapipe as mp
 from math import floor
 import rclpy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CameraInfo
 from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Pose, Quaternion, Point
 import numpy as np
@@ -38,6 +38,9 @@ def initialize_pose_detector(min_detection_confidence = 0.8,
   )
   return pose_detector
 
+def clamp(val, min_val, max_val):
+    return max(min_val, min(val, max_val))
+
 
 class SkeletonDetection(PostProcessing):
   def __init__(self):
@@ -46,15 +49,19 @@ class SkeletonDetection(PostProcessing):
     self.skeleton_topology_publisher = self.internal_node.create_publisher(Marker, 'skeleton', 10)
     self.debug_publisher = self.internal_node.create_publisher(Image, 'debug_skeleton_detection_image', 10)
 
-    
     self.internal_node.declare_parameter('skeleton_detection_node.debug_topic', True)
-
     self.internal_node.declare_parameter('skeleton_detection_node.min_detection_confidence', 0.8)
     self.internal_node.declare_parameter('skeleton_detection_node.min_tracking_confidence', 0.5)
+    self.internal_node.declare_parameter('skeleton_detection_node.roi_half_size', 0)
 
     self.debug = self.internal_node.get_parameter('skeleton_detection_node.debug_topic').value
     self.min_detection_confidence = self.internal_node.get_parameter('skeleton_detection_node.min_detection_confidence').value
     self.min_tracking_confidence = self.internal_node.get_parameter('skeleton_detection_node.min_tracking_confidence').value
+    self.roi_half_size = self.internal_node.get_parameter('skeleton_detection_node.roi_half_size').value
+
+    if self.roi_half_size < 0:
+      self.internal_node.get_logger().warning('ROI half size must be greater than 0')
+      self.roi_half_size = 0
 
     self.camera_info = None
     self.pose_detector = initialize_pose_detector(self.min_detection_confidence, 
@@ -62,7 +69,7 @@ class SkeletonDetection(PostProcessing):
 
     self.cv_bridge = CvBridge()
 
-  def initialize(self, camera_info):
+  def initialize(self, camera_info: CameraInfo):
     self.camera_info = camera_info
     self.internal_node.get_logger().info('Skeleton detection running ...')
 
@@ -115,6 +122,9 @@ class SkeletonDetection(PostProcessing):
   
   def process_frames(self, color_frame, distance_frame):
     result = self.pose_detector.process(color_frame)
+    if result.pose_landmarks is None:
+       return
+    
     keypoints = result.pose_landmarks.landmark
 
     indexes = []
@@ -128,12 +138,23 @@ class SkeletonDetection(PostProcessing):
       x, y = de_normalize_keypoint(keypoint, 
                                    self.camera_info.width, 
                                    self.camera_info.height)
-      depth_pixel = distance_frame[y, x]
-      if depth_pixel < EPS:
-        self.internal_node.get_logger().info(f'Keypoint {keypoint_id} haz zero depth, skipping')
-        continue
 
-      x_m, y_m, z_m = deproject_pixel_to_point((x, y), depth_pixel, self.camera_info)
+      y_min = clamp(y - self.roi_half_size, 0, self.camera_info.height - 1)
+      y_max = clamp(y + 1 + self.roi_half_size, 0, self.camera_info.height - 1) # +1 to include the last pixel
+      x_min = clamp(x - self.roi_half_size, 0, self.camera_info.width - 1)
+      x_max = clamp(x + 1 + self.roi_half_size, 0, self.camera_info.width - 1) # +1 to include the last pixel
+
+      roi_distance = distance_frame[y_min:y_max, x_min:x_max]
+
+      # Filters out invalid values and calculates the mean ignoring zero and NaN
+      valid_values = roi_distance[(roi_distance > 0) & np.isfinite(roi_distance)]
+
+      if valid_values.size > 0:
+          average_depth_pixels = np.mean(valid_values)
+      else:
+          continue
+
+      x_m, y_m, z_m = deproject_pixel_to_point((x, y), average_depth_pixels, self.camera_info)
       
       indexes.append(keypoint_id)
       keypoints_3d.append((x_m, y_m, z_m))
@@ -158,7 +179,7 @@ class SkeletonDetection(PostProcessing):
       self.debug_publisher.publish(self.cv_bridge.cv2_to_imgmsg(color_frame_with_detection))
 
   def is_not_person(self, indexes_present, landmark_list):
-      # Check left shoulder to left hip distance
+    # Check left shoulder to left hip distance
     mp_pose = mp.solutions.pose
     if (mp_pose.PoseLandmark.LEFT_SHOULDER.value in indexes_present and 
         mp_pose.PoseLandmark.LEFT_HIP.value in indexes_present):

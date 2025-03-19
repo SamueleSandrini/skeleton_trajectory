@@ -11,7 +11,7 @@ camera_node:
       class: "SkeletonDetection"
 
     skeleton_detection_node:
-      
+      roi_half_size: 1
       debug_topic: True
 
 
