@@ -45,7 +45,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-#            'skeleton_tracking = skeleton_tracking.skeleton_tracking:main',
+           'skeleton_filter_node = skeleton_tracking.skeleton_filter_node:main',
         ],
     },
 )

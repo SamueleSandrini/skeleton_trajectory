@@ -15,3 +15,7 @@ camera_node:
       debug_topic: True
 
 
+skeleton_filter_node:
+  ros__parameters:
+    q_noise: [0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.1, 0.1, 0.1]
+    r_noise: [0.05, 0.05, 0.1]
