@@ -18,7 +18,7 @@ from geometry_msgs.msg import Point
 import mediapipe as mp
 
 
-def build_skeleton_topology_msg(keypoints, indexes, header):
+def build_skeleton_topology_msg(keypoints, header):
   skeleton = Marker()
   skeleton.header = header
   skeleton.ns = 'skeleton_segments'
@@ -30,13 +30,14 @@ def build_skeleton_topology_msg(keypoints, indexes, header):
   skeleton.color.b = 0.0
   skeleton.color.a = 1.0
 
+  indexes = keypoints.keys()
   for segment in mp.solutions.pose.POSE_CONNECTIONS:
     idx1, idx2 = segment
     if idx1 in indexes and idx2 in indexes:
-      keypoint_1 = keypoints[indexes.index(idx1)]
-      keypoint_2 = keypoints[indexes.index(idx2)]
-      x1, y1, z1 = keypoint_1.position.x, keypoint_1.position.y, keypoint_1.position.z
-      x2, y2, z2 = keypoint_2.position.x, keypoint_2.position.y, keypoint_2.position.z
+      keypoint_1 = keypoints[idx1]
+      keypoint_2 = keypoints[idx2]
+      x1, y1, z1 = keypoint_1
+      x2, y2, z2 = keypoint_2
       skeleton.points.append(Point(x = float(x1), y = float(y1), z = float(z1)))
       skeleton.points.append(Point(x = float(x2), y = float(y2), z = float(z2)))
   return skeleton
@@ -65,13 +66,13 @@ def create_marker_msg(id, x, y, z, header):
   
   return marker
 
-def build_marker_array_msg(keypoints, indexes, header):
+def build_marker_array_msg(keypoints, header):
   marker_array = MarkerArray()
-  for index, keypoint in zip(indexes, keypoints):
+  for index, keypoint in keypoints.items():
     marker = create_marker_msg(index, 
-                               keypoint.position.x, 
-                               keypoint.position.y, 
-                               keypoint.position.z, 
+                               keypoint[0], 
+                               keypoint[1], 
+                               keypoint[2], 
                                header)
     marker_array.markers.append(marker)
   return marker_array

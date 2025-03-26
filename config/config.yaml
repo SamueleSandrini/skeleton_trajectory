@@ -22,8 +22,6 @@ skeleton_filter_node:
 
     custom_publishers: ["pose_array", "centroid"]
     pose_array:
-      package: "skeleton_tracking.custom_publishers.pose_array_publisher"
-      class: "PoseArrayPublisher"
+      module: "skeleton_tracking.custom_publishers.pose_array_publisher.PoseArrayPublisher"
     centroid:
-      package: "skeleton_tracking.custom_publishers.centroid_publisher"
-      class: "CentroidPublisher"
+      module: "skeleton_tracking.custom_publishers.centroid_publisher.CentroidPublisher"
