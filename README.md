@@ -41,7 +41,22 @@ To launch the skeleton tracking system:
       camera_info_topic: "/head_front_camera/rgb/camera_info"
       frames_approx_sync: false
   ```
-2. **Run the Launch File**:
+2. **Configure the  `config.yaml` file to set the parameters of the `skeleton_filter_node`. 
+  ```yaml
+  skeleton_filter_node:
+  ros__parameters:
+    q_noise: [0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.1, 0.1, 0.1]
+    r_noise: [0.05, 0.05, 0.1]
+
+    custom_publishers: ["pose_array", "centroid"]
+    pose_array:
+      module: "skeleton_tracking.custom_publishers.pose_array_publisher.PoseArrayPublisher"
+    centroid:
+      module: "skeleton_tracking.custom_publishers.centroid_publisher.CentroidPublisher"
+  ```
+  Note that you can write you own custom "publisher" to elaborate the skeleton as you prefer and publish the message that you prefer. You just need to inherit from `CustomPublisherBase` and put add the `package.subpackage.module.classname`.
+  
+3. **Run the Launch File**:
   ```bash
   ros2 launch skeleton_tracking skeleton_tracking_bringup.launch.py
   ```
