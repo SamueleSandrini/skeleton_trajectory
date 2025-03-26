@@ -17,6 +17,7 @@ import rclpy
 from rclpy.node import Node
 
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseArray, TwistStamped, Transform, Vector3, TransformStamped
+import rclpy.publisher
 from visualization_msgs.msg import Marker, MarkerArray
 import tf2_ros
 import numpy as np
@@ -26,8 +27,11 @@ import importlib
 from skeleton_tracking.skeleton_traking_utils import build_skeleton_topology_msg, build_marker_array_msg
 from std_msgs.msg import Header
 from skeleton_tracking.kalman_filter import KalmanFilter
-N_KEYPOINTS = 33
+from skeleton_tracking.custom_publishers.custom_publisher_base import CustomPublisherBase
 
+import importlib
+
+N_KEYPOINTS = 33
 
 # def load_custom_publishers():
         #     sampler_module_name = self.get_parameter('sampling_stategy_module').get_parameter_value().string_value
@@ -61,7 +65,7 @@ class SkeletonFilterNode(Node):
         super().__init__('skeleton_filter_node')
 
         # Parameters
-        self.declare_parameter('custom_publishers', [])
+        self.declare_parameter('custom_publishers', [''])
         self.declare_parameter('keypoint_timeout', 0.1)
 
         self.declare_parameter('q_noise', [0.01, 0.01, 0.01, 0.05, 0.05, 0.05, 0.1, 0.1, 0.1])
@@ -70,14 +74,40 @@ class SkeletonFilterNode(Node):
 
         custom_publishers = self.get_parameter('custom_publishers').value
         self.keypoint_timeout = self.get_parameter('keypoint_timeout').value
+        
+        self.custom_publishers = {}
+        for publisher in custom_publishers:
+          self.declare_parameter(f'{publisher}.package', '')
+          self.declare_parameter(f'{publisher}.class', '')
+          package_name = self.get_parameter(f'{publisher}.package').get_parameter_value().string_value
+          class_name = self.get_parameter(f'{publisher}.class').get_parameter_value().string_value
+          
+          full_module_name = f'{package_name}'
+          self.get_logger().info(f"Loading custom publisher: {full_module_name}.{class_name}")
+          try:
+              # Import the module dynamically
+              self.get_logger().info(f"Loading custom publisher: {full_module_name}")
+              custom_pub_module = importlib.import_module(full_module_name)
+              # Retrieve the class 
+              self.get_logger().info(f"Loading custom publisher: {class_name}")
+              custom_pub_class = getattr(custom_pub_module, class_name)
+              
+              # Check if the loaded class is a subclass of CustomPublisherBase
+              if not issubclass(custom_pub_class, CustomPublisherBase):
+                  self.get_logger().warning(f"The custom publisher class {custom_pub_class.__name__} is not a subclass of CustomPublisherBase.")
+                  continue
+              
+              publisher_instance = custom_pub_class()
+              self.get_logger().info(f"Custom publisher {class_name} loaded.")
+              publisher = self.create_publisher(publisher_instance.get_msg_type(),
+                                    publisher_instance.get_topic(),
+                                    10)
+              self.custom_publishers[publisher]=publisher_instance
 
-        # for publisher in custom_publishers:
-        #   self.declare_parameter(f'{publisher}.package')
-        #   self.declare_parameter(f'{publisher}.module')
-        #   self.declare_parameter(f'{publisher}.class')
-        #   package_name = self.get_parameter(f'{publisher}.package').get_parameter_value().string_value
-        #   module_name = self.get_parameter(f'{publisher}.module').get_parameter_value().string_value
-        #   class_name = self.get_parameter(f'{publisher}.class').get_parameter_value().string_value
+          except Exception as e:
+              self.get_logger().warning(f"Error loading custom publisher: {publisher}, it is not loaded.")
+              continue
+
 
         # Subscriber
         self.subscriber_keypoints = self.create_subscription(MarkerArray, 'skeleton_markers', self.callback_keypoint, 10)
@@ -91,7 +121,7 @@ class SkeletonFilterNode(Node):
                                                r_noise,
                                                dt) for _ in range(N_KEYPOINTS)]
         self.time_keypoint = np.zeros((N_KEYPOINTS,))
-        
+
         # Publisher
         self.skeleton_marker_publisher = self.create_publisher(MarkerArray, 'skeleton_markers_filtered', 10)
         self.skeleton_topology_publisher = self.create_publisher(Marker, 'skeleton_filtered', 10)
@@ -121,7 +151,7 @@ class SkeletonFilterNode(Node):
 
         keypoint_list = []
         list_of_indexes_pres = []
-
+        keypoints = {}
         for keypoint in keypoints_msg.markers:
           id_kp = keypoint.id
           keypoint_position = np.array([keypoint.pose.position.x, 
@@ -139,6 +169,9 @@ class SkeletonFilterNode(Node):
                                                    y = keypoint_filtered_position[1], 
                                                    z = keypoint_filtered_position[2])))
           list_of_indexes_pres.append(id_kp)
+          keypoints[id_kp] = Pose(position=Point(x = keypoint_filtered_position[0], 
+                                                   y = keypoint_filtered_position[1], 
+                                                   z = keypoint_filtered_position[2]))
           self.time_keypoint[id_kp] = current_time
 
         # Open loop update for undetected keypoints
@@ -164,6 +197,15 @@ class SkeletonFilterNode(Node):
                                               header)
         self.skeleton_marker_publisher.publish(marker_array)
 
+        keypoint_dict = {}
+        for idx, keypoint in zip(list_of_indexes_pres, keypoint_list):
+          keypoint_dict[idx] = np.array([keypoint.position.x, keypoint.position.y, keypoint.position.z])
+
+        for publisher, publisher_instance in self.custom_publishers.items():
+          publisher_instance.publish(publisher,keypoint_dict, header)
+          # publisher.publish()
+
+        # 
                                                                  
         # skeleton = Marker()
         # skeleton.header.stamp = current_time

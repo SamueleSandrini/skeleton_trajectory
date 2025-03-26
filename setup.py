@@ -19,6 +19,7 @@ from glob import glob
 from setuptools import find_packages, setup
 
 package_name = 'skeleton_tracking'
+# submodule = "skeleton_tracking/custom_publishers"
 
 setup(
     name=package_name,
