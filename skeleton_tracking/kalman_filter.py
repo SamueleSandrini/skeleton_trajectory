@@ -95,7 +95,7 @@ class KalmanFilter:
 
       if abs(self.y_observed_priori[2] - y_measure[2]) > 0.5 and self.skip_measure < 3 and self.initialized:
           self.skip_measure += 1
-          return self.update_open_loop()
+          return self.open_loop_update()
       elif self.skip_measure >= 3:
           self.initialize(y_measure)
 
