@@ -1,8 +1,11 @@
 camera_node:
   ros__parameters:
-    color_image_topic: "/head_front_camera/rgb/image_raw"
-    depth_image_topic: "/head_front_camera/depth_registered/image_raw"
-    camera_info_topic: "/head_front_camera/rgb/camera_info"
+    color_image_topic: /camera/camera/color/image_raw
+    depth_image_topic: /camera/camera/aligned_depth_to_color/image_raw
+    camera_info_topic: /camera/camera/aligned_depth_to_color/camera_info
+    # color_image_topic: "/head_front_camera/rgb/image_raw"
+    # depth_image_topic: "/head_front_camera/depth_registered/image_raw"
+    # camera_info_topic: "/head_front_camera/rgb/camera_info"
     frames_approx_sync: false
 
     post_processing:
