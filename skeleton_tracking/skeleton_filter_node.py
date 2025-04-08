@@ -131,7 +131,7 @@ class SkeletonFilterNode(Node):
         for id_kp in set(range(N_KEYPOINTS)) - set(keypoints.keys()):
           if current_time - self.time_keypoint[id_kp] < self.keypoint_timeout:
             keypoint_nominal_position = self.keypoints_filters[id_kp].open_loop_update()
-            keypoints[id] = keypoint_nominal_position
+            keypoints[id_kp] = keypoint_nominal_position
 
             self.get_logger().info(f"Keypoint: {id_kp} updated in open loop")
 
