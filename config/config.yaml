@@ -5,8 +5,11 @@ camera_node:
     camera_info_topic: /camera/camera/aligned_depth_to_color/camera_info
     # color_image_topic: "/head_front_camera/rgb/image_raw"
     # depth_image_topic: "/head_front_camera/depth_registered/image_raw"
-    # camera_info_topic: "/head_front_camera/rgb/camera_info"
-    frames_approx_sync: false
+    # camera_info_topic: "/head_front_camera/depth_registered/camera_info"
+    frames_approx_sync: False
+    depth_frame_encoding: 32FC1
+    depth_unit_in_meters: False
+
 
     post_processing:
       package: "skeleton_tracking"
