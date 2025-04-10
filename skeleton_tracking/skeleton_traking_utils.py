@@ -76,3 +76,8 @@ def build_marker_array_msg(keypoints, header):
                                header)
     marker_array.markers.append(marker)
   return marker_array
+
+
+def get_num_keypoints():
+    return len(mp.solutions.pose.PoseLandmark)
+

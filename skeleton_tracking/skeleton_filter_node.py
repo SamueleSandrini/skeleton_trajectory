@@ -16,17 +16,16 @@
 import rclpy
 from rclpy.node import Node
 
-import rclpy.publisher
 from visualization_msgs.msg import Marker, MarkerArray
 import numpy as np
-from skeleton_tracking.skeleton_traking_utils import build_skeleton_topology_msg, build_marker_array_msg
+from skeleton_tracking.skeleton_traking_utils import build_skeleton_topology_msg, build_marker_array_msg, get_num_keypoints
 from std_msgs.msg import Header
 from skeleton_tracking.kalman_filter import KalmanFilter
 from skeleton_tracking.custom_publishers.custom_publisher_base import CustomPublisherBase
 
 import importlib
 
-N_KEYPOINTS = 33
+N_KEYPOINTS = get_num_keypoints()
 
 
 class SkeletonFilterNode(Node):
