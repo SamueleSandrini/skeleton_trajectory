@@ -3,9 +3,10 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Header
 from visualization_msgs.msg import Marker, MarkerArray
-
+from skeleton_tracking.skeleton_filter_node import SkeletonFilterNode
 import numpy as np
 import time
+import threading
 
 N_KEYPOINTS = 33
 FRAME_ID = "base_link"
@@ -74,29 +75,204 @@ def create_noisy_marker_array(n_keypoints=33, noise_std=0.03):
     marker_array = MarkerArray(markers=markers)
     return marker_array
 
+class FakeSkeletonPublisher(Node):
+    def __init__(self):
+        super().__init__("fake_skeleton_publisher")
+        self.marker_publisher = self.create_publisher(MarkerArray, "/skeleton_markers", 10)
+        self.timer = None
 
-@pytest.mark.rostest
-def test_filter_removes_noise(monkeypatch):
-    rclpy.init()
-    node = rclpy.create_node("test_node")
-
-    pub = node.create_publisher(MarkerArray, "/skeleton_markers", 10)
-    sub = node.create_subscription(MarkerArray, "/skeleton_markers_filtered", lambda msg: callback(msg, node), 10)
-
-    received_messages = []
-
-    def callback(msg, node):
-        received_messages.append(msg)
-        if len(received_messages) >= 10:
-            node.get_logger().info("10 messages received, shutting down.")
-            rclpy.shutdown()
-
-    # Pubblica messaggi rumorosi
-    start = time.time()
-    while rclpy.ok() and (time.time() - start) < 25.0:
+    def publish(self):
         msg = create_noisy_marker_array()
-        pub.publish(msg)
-        rclpy.spin_once(node, timeout_sec=0.1)
+        self.marker_publisher.publish(msg)
+        self.get_logger().info("Published fake skeleton")
+
+    def start_publishing(self, frequency_hz=1.0):
+        if self.timer is None:
+            period = 1.0 / frequency_hz
+            self.timer = self.create_timer(period, self.publish)
+            self.get_logger().info(f"Started publishing at {frequency_hz} Hz")
+
+    def stop_publishing(self):
+        if self.timer is not None:
+            self.timer.cancel()
+            self.destroy_timer(self.timer)
+            self.timer = None
+            self.get_logger().info("Stopped publishing")
+
+class SkeletonFilterAnalyzer(Node):
+    def __init__(self):
+        super().__init__("skeleton_filter_analyzer")
+        self.marker_filtered_subscription = self.create_subscription(
+            MarkerArray,
+            "/skeleton_markers_filtered",
+            self.filtered_listener_callback,
+            10
+        )
+        self.marker_sublscription = self.create_subscription(
+            MarkerArray,
+            "/skeleton_markers",
+            self.nominal_listener_callback,
+            10
+        )
+        self.filtered_markers = {}
+        self.nominal_markers = {}
+        
+
+    def filtered_listener_callback(self, msg):
+        # Analyze the filtered skeleton data
+        for marker in msg.markers:
+            if marker.id not in self.filtered_markers:
+                self.filtered_markers[marker.id] = []
+
+            self.filtered_markers[marker.id].append([
+                marker.pose.position.x,
+                marker.pose.position.y,
+                marker.pose.position.z
+            ])
+
+    def nominal_listener_callback(self, msg):
+        for marker in msg.markers:
+            if marker.id not in self.nominal_markers:
+                self.nominal_markers[marker.id] = []
+
+            self.nominal_markers[marker.id].append([
+                marker.pose.position.x,
+                marker.pose.position.y,
+                marker.pose.position.z
+            ])
+        
+    def analyze_filtered_data(self):
+        # Perform analysis on the filtered data
+        
+        filterd_marker_stats = {}
+        for marker_id, positions in self.filtered_markers.items():
+            marker_positions_np = np.array(positions)
+            marker_mean = marker_positions_np.mean(axis=0)
+            marker_std = marker_positions_np.std(axis=0)
+            filterd_marker_stats[marker_id] = {
+                "mean": marker_mean,
+                "std": marker_std
+            }
+            self.get_logger().info(f"Keypoint: {marker_id}, mean: {marker_mean}, std: {marker_std} ")
+        self.get_logger().info("Filtered data analysis complete.")
+        
+        nominal_marker_stats = {}
+        for marker_id, positions in self.nominal_markers.items():
+            marker_positions_np = np.array(positions)
+            marker_mean = marker_positions_np.mean(axis=0)
+            marker_std = marker_positions_np.std(axis=0)
+            nominal_marker_stats[marker_id] = {
+                "mean": marker_mean,
+                "std": marker_std
+            }
+            self.get_logger().info(f"Keypoint: {marker_id}, mean: {marker_mean}, std: {marker_std} ")
+
+        self.get_logger().info("Comparison")
+        for marker_id in self.filtered_markers.keys():
+            mean_diff = filterd_marker_stats[marker_id]["mean"] - nominal_marker_stats[marker_id]["mean"]
+            std_diff = filterd_marker_stats[marker_id]["std"] - nominal_marker_stats[marker_id]["std"]
+            self.get_logger().info(f"Keypoint: {marker_id}, mean difference: {mean_diff}, std difference: {std_diff} ")
+# class FakeSkeletonPublisher(Node):
+#     def __init__(self):
+#         super().__init__("fake_skeleton_publisher")
+#         self.marker_publisher = self.create_publisher(MarkerArray, "/skeleton_markers", 10)
+        
+#     def publish(self):
+#         msg = create_noisy_marker_array()
+#         self.marker_publisher.publish(msg)
+    
+#     def start_publishing(self, frequency_hz=1.0):
+#         self._running = True
+#         pub_thread = threading.Thread(target=self._publish_loop, args=(frequency_hz,))
+#         pub_thread.daemon = True
+#         pub_thread.start()
+
+#     def stop_publishing(self):
+#         self._running = False
+
+#     def _publish_loop(self, frequency_hz):
+#         period = 1.0 / frequency_hz
+#         while rclpy.ok() and self._running:
+#             self.publish()
+#             time.sleep(period)
+
+@pytest.mark.dependency(name="setUp")
+def test_setup():
+    rclpy.init()
+
+@pytest.fixture
+def fake_skeleton_publisher():
+    return FakeSkeletonPublisher()
+
+@pytest.fixture
+def skeleton_analyzer():
+    return SkeletonFilterAnalyzer()
+
+@pytest.fixture
+def skeleton_filter_node():
+    return SkeletonFilterNode()
+
+
+@pytest.mark.dependency(name="skeleton_filter_node_test", 
+                        depends=["setUp"])
+def test_skeleton_filter_class(fake_skeleton_publisher):
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(fake_skeleton_publisher)
+    
+    t_start = fake_skeleton_publisher.get_clock().now().nanoseconds * 1e-9
+    elapsed_time = 0.0
+    fake_skeleton_publisher.start_publishing(frequency_hz=10.0)
+    while rclpy.ok() and elapsed_time < 1.0:
+        elapsed_time = fake_skeleton_publisher.get_clock().now().nanoseconds * 1e-9 - t_start
+        executor.spin_once(timeout_sec=0.1)
+    fake_skeleton_publisher.stop_publishing()
+    
+
+@pytest.mark.dependency(name="filter_removes_noise", 
+                        depends=["setUp", "skeleton_filter_node_test"])
+def test_filter_removes_noise(fake_skeleton_publisher,
+                              skeleton_analyzer,
+                              skeleton_filter_node):
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(fake_skeleton_publisher)
+    executor.add_node(skeleton_filter_node)
+    executor.add_node(skeleton_analyzer)
+
+
+    t_start = fake_skeleton_publisher.get_clock().now().nanoseconds * 1e-9
+    elapsed_time = 0.0
+    fake_skeleton_publisher.start_publishing(frequency_hz=30.0)
+    
+    while rclpy.ok() and elapsed_time < 5.0:
+        elapsed_time = fake_skeleton_publisher.get_clock().now().nanoseconds * 1e-9 - t_start
+        executor.spin_once(timeout_sec=0.1)
+    
+    fake_skeleton_publisher.stop_publishing()
+    skeleton_analyzer.analyze_filtered_data()
+
+
+# @pytest.mark.rostest
+# def test_filter_removes_noise(monkeypatch):
+#     rclpy.init()
+#     node = rclpy.create_node("test_node")
+
+#     pub = node.create_publisher(MarkerArray, "/skeleton_markers", 10)
+#     sub = node.create_subscription(MarkerArray, "/skeleton_markers_filtered", lambda msg: callback(msg, node), 10)
+
+#     received_messages = []
+
+#     def callback(msg, node):
+#         received_messages.append(msg)
+#         if len(received_messages) >= 10:
+#             node.get_logger().info("10 messages received, shutting down.")
+#             rclpy.shutdown()
+
+#     # Pubblica messaggi rumorosi
+#     start = time.time()
+#     while rclpy.ok() and (time.time() - start) < 25.0:
+#         msg = create_noisy_marker_array()
+#         pub.publish(msg)
+#         rclpy.spin_once(node, timeout_sec=0.1)
 
     # rclpy.spin(node)  # attende che il callback riceva abbastanza dati
 
