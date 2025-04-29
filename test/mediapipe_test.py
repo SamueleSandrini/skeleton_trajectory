@@ -1,46 +1,46 @@
-import mediapipe as mp
-import cv2 as cv
+# import mediapipe as mp
+# import cv2 as cv
 
-image = cv.imread('test.jpg')
-cv.imshow('image', image)
-cv.waitKey(0)
-cv.destroyAllWindows()
-pose_detector = mp.solutions.pose.Pose()
+# image = cv.imread('test.jpg')
+# cv.imshow('image', image)
+# cv.waitKey(0)
+# cv.destroyAllWindows()
+# pose_detector = mp.solutions.pose.Pose()
 
-result = pose_detector.process(image)
+# result = pose_detector.process(image)
 
 # print(result.pose_landmarks)
 # print(type(result))
 # print(type(result.pose_landmarks))
 # print(type(result.pose_landmarks.landmark))
 
-for landmark in result.pose_landmarks.landmark:
-    print(landmark)
-from ultralytics import YOLO
+# for landmark in result.pose_landmarks.landmark:
+#     print(landmark)
+# from ultralytics import YOLO
 
 # Load a model
-model = YOLO("yolov8n-pose.pt")
+# model = YOLO("yolov8n-pose.pt")
 
-result = model.predict("test2.jpeg")
+# result = model.predict("test2.jpeg")
 #print keypoints
-for single_instance in result:
-    print(single_instance.keypoints)
+# for single_instance in result:
+#     print(single_instance.keypoints)
 
-import torch
-from ultralytics.engine.results import Keypoints
+# import torch
+# from ultralytics.engine.results import Keypoints
 
 # Creiamo un tensore con i keypoints: (x, y, confidenza)
 # Supponiamo di avere 2 persone e 3 keypoints a testa (per esempio)
-data = torch.tensor([
-    [[100, 200, 0.9], [150, 250, 0.8], [120, 180, 0.95]],  # Persona 1
-    [[200, 300, 0.85], [250, 350, 0.75], [220, 280, 0.9]]   # Persona 2
-])
+# data = torch.tensor([
+#     [[100, 200, 0.9], [150, 250, 0.8], [120, 180, 0.95]],  # Persona 1
+#     [[200, 300, 0.85], [250, 350, 0.75], [220, 280, 0.9]]   # Persona 2
+# ])
 
 # Creiamo l'oggetto Keypoints
-keypoints_obj = Keypoints(data)
+# keypoints_obj = Keypoints(data)
 
 # Verifica
-print(keypoints_obj)
+# print(keypoints_obj)
 
 # print(type(result))
 
