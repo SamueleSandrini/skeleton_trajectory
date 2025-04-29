@@ -39,6 +39,7 @@ jobs:
                 "parallel-workers" : 1
               }
             }
+          vcs-repo-file-url: ${GITHUB_WORKSPACE}/dependencies.repos
 
       - name: Run Tests
         run: |
