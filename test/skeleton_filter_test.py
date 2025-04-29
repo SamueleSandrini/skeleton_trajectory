@@ -6,7 +6,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from skeleton_tracking.skeleton_filter_node import SkeletonFilterNode
 import numpy as np
 import time
-import threading
+# import threading
 
 N_KEYPOINTS = 33
 FRAME_ID = "base_link"
@@ -108,7 +108,7 @@ class SkeletonFilterAnalyzer(Node):
             self.filtered_listener_callback,
             10
         )
-        self.marker_sublscription = self.create_subscription(
+        self.marker_subscription = self.create_subscription(
             MarkerArray,
             "/skeleton_markers",
             self.nominal_listener_callback,
@@ -116,9 +116,12 @@ class SkeletonFilterAnalyzer(Node):
         )
         self.filtered_markers = {}
         self.nominal_markers = {}
-        
+        self.filtered_marker_times = []
+        self.nominal_marker_times = []        
 
     def filtered_listener_callback(self, msg):
+        self.filtered_marker_times.append(self.get_clock().now().nanoseconds * 1e-9)
+
         # Analyze the filtered skeleton data
         for marker in msg.markers:
             if marker.id not in self.filtered_markers:
@@ -131,6 +134,8 @@ class SkeletonFilterAnalyzer(Node):
             ])
 
     def nominal_listener_callback(self, msg):
+        self.nominal_marker_times.append(self.get_clock().now().nanoseconds * 1e-9)
+
         for marker in msg.markers:
             if marker.id not in self.nominal_markers:
                 self.nominal_markers[marker.id] = []
@@ -172,29 +177,18 @@ class SkeletonFilterAnalyzer(Node):
             mean_diff = filterd_marker_stats[marker_id]["mean"] - nominal_marker_stats[marker_id]["mean"]
             std_diff = filterd_marker_stats[marker_id]["std"] - nominal_marker_stats[marker_id]["std"]
             self.get_logger().info(f"Keypoint: {marker_id}, mean difference: {mean_diff}, std difference: {std_diff} ")
-# class FakeSkeletonPublisher(Node):
-#     def __init__(self):
-#         super().__init__("fake_skeleton_publisher")
-#         self.marker_publisher = self.create_publisher(MarkerArray, "/skeleton_markers", 10)
-        
-#     def publish(self):
-#         msg = create_noisy_marker_array()
-#         self.marker_publisher.publish(msg)
-    
-#     def start_publishing(self, frequency_hz=1.0):
-#         self._running = True
-#         pub_thread = threading.Thread(target=self._publish_loop, args=(frequency_hz,))
-#         pub_thread.daemon = True
-#         pub_thread.start()
 
-#     def stop_publishing(self):
-#         self._running = False
-
-#     def _publish_loop(self, frequency_hz):
-#         period = 1.0 / frequency_hz
-#         while rclpy.ok() and self._running:
-#             self.publish()
-#             time.sleep(period)
+    def compute_filter_latency(self):
+        if not self.nominal_marker_times or not self.filtered_marker_times:
+            return None
+        print(self.nominal_marker_times)
+        print(self.filtered_marker_times)
+        print(len(self.nominal_marker_times))
+        print(len(self.filtered_marker_times))
+        nominal_time = self.nominal_marker_times[-1]
+        filtered_time = self.filtered_marker_times[-1]
+        return np.mean([np.array(self.filtered_marker_times) - 
+                        np.array(self.nominal_marker_times)])  # latency in milliseconds
 
 @pytest.mark.dependency(name="setUp")
 def test_setup():
@@ -250,7 +244,27 @@ def test_filter_removes_noise(fake_skeleton_publisher,
     fake_skeleton_publisher.stop_publishing()
     skeleton_analyzer.analyze_filtered_data()
 
+@pytest.mark.dependency(name="test_filter_tlatency", 
+                        depends=["setUp", "skeleton_filter_node_test", "filter_removes_noise"])
+def test_filter_tlatency(fake_skeleton_publisher,
+                         skeleton_analyzer,
+                         skeleton_filter_node):
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(fake_skeleton_publisher)
+    executor.add_node(skeleton_filter_node)
+    executor.add_node(skeleton_analyzer)
 
+
+    t_start = fake_skeleton_publisher.get_clock().now().nanoseconds * 1e-9
+    elapsed_time = 0.0
+    fake_skeleton_publisher.start_publishing(frequency_hz=30.0)
+    
+    while rclpy.ok() and elapsed_time < 5.0:
+        elapsed_time = fake_skeleton_publisher.get_clock().now().nanoseconds * 1e-9 - t_start
+        executor.spin_once(timeout_sec=0.1)
+    
+    fake_skeleton_publisher.stop_publishing()
+    print(skeleton_analyzer.compute_filter_latency())
 # @pytest.mark.rostest
 # def test_filter_removes_noise(monkeypatch):
 #     rclpy.init()
@@ -295,3 +309,27 @@ def test_filter_removes_noise(fake_skeleton_publisher,
     #         assert np.all(var < 0.05), f"Filtered variance too high for keypoint {kp_id}: {var}"
 
     # node.destroy_node()
+
+# class FakeSkeletonPublisher(Node):
+#     def __init__(self):
+#         super().__init__("fake_skeleton_publisher")
+#         self.marker_publisher = self.create_publisher(MarkerArray, "/skeleton_markers", 10)
+        
+#     def publish(self):
+#         msg = create_noisy_marker_array()
+#         self.marker_publisher.publish(msg)
+    
+#     def start_publishing(self, frequency_hz=1.0):
+#         self._running = True
+#         pub_thread = threading.Thread(target=self._publish_loop, args=(frequency_hz,))
+#         pub_thread.daemon = True
+#         pub_thread.start()
+
+#     def stop_publishing(self):
+#         self._running = False
+
+#     def _publish_loop(self, frequency_hz):
+#         period = 1.0 / frequency_hz
+#         while rclpy.ok() and self._running:
+#             self.publish()
+#             time.sleep(period)
