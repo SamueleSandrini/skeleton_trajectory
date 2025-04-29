@@ -1,0 +1,11 @@
+fixes:
+  - "ros_ws/src/*/vision_system/::"
+
+ignore:
+  - "test/*"  # Ignore in tests
+  # - "docs/*"  # Ignore in docs
+  # - "examples/*"  # Ignore in examples
+  - "resource/*"  # Ignore in resource
+  - "config/*"  # Ignore in config
+  - "launch/*"  # Ignore in launch
+  - "setup.py"
