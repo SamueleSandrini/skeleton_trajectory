@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Union
+from typing import Dict
 import numpy as np
-from rclpy.qos import QoSProfile
 from rclpy.publisher import Publisher
-from skeleton_tracking.custom_publishers.custom_publisher_base import CustomPublisherBase
+from skeleton_tracking.custom_publishers.custom_publisher_base import (
+    CustomPublisherBase,
+)
 from geometry_msgs.msg import PoseArray, Pose
 from std_msgs.msg import Header
+
 
 def compute_centroid(keypoints):
     return np.mean(list(keypoints.values()), axis=0)
 
+
 def build_centroid_msg(centroid_xyz: np.array, header):
     centroid_msg = PoseArray()
     centroid_msg.header = header
-    
+
     centroid_pose = Pose()
     centroid_pose.position.x = centroid_xyz[0]
     centroid_pose.position.y = centroid_xyz[1]
@@ -35,29 +38,31 @@ def build_centroid_msg(centroid_xyz: np.array, header):
     centroid_msg.poses.append(centroid_pose)
     return centroid_msg
 
+
 class CentroidPublisher(CustomPublisherBase):
 
     def get_msg_type(self):
         return PoseArray
-    
+
     def get_topic(self) -> str:
-        return "centroid"
-    
+        return 'centroid'
+
     # @abstractmethod
     # def get_qos_profile(self) -> Union[QoSProfile, int]:
     #     pass
-        
-    def publish(self, publisher: Publisher,
-                      keypoints: Dict[int, np.array],
-                      header: Header):
+
+    def publish(
+        self,
+        publisher: Publisher,
+        keypoints: Dict[int, np.array],
+        header: Header,
+    ):
         # compute centroid of keypoints
         centroid_xyz = compute_centroid(keypoints)
         centroid_msg = build_centroid_msg(centroid_xyz, header)
 
         publisher.publish(centroid_msg)
 
-    def get_message(self,
-                    keypoints: Dict[int, np.array],
-                    header: Header):
+    def get_message(self, keypoints: Dict[int, np.array], header: Header):
         centroid_xyz = compute_centroid(keypoints)
         return build_centroid_msg(centroid_xyz, header)

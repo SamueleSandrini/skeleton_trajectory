@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
-from typing import Dict, Union
+from typing import Dict
 import numpy as np
-from rclpy.qos import QoSProfile
 from rclpy.publisher import Publisher
-from skeleton_tracking.custom_publishers.custom_publisher_base import CustomPublisherBase
+from skeleton_tracking.custom_publishers.custom_publisher_base import (
+    CustomPublisherBase,
+)
 from geometry_msgs.msg import PoseArray, Pose
 from std_msgs.msg import Header
+
 
 def build_skeleton_as_pose_array_msg(keypoints: Dict[int, np.array], header):
     skeleton_msg = PoseArray()
@@ -32,25 +33,27 @@ def build_skeleton_as_pose_array_msg(keypoints: Dict[int, np.array], header):
         skeleton_msg.poses.append(pose)
     return skeleton_msg
 
+
 class PoseArrayPublisher(CustomPublisherBase):
 
     def get_msg_type(self):
         return PoseArray
-    
+
     def get_topic(self) -> str:
-        return "poses"
-    
+        return 'poses'
+
     # @abstractmethod
     # def get_qos_profile(self) -> Union[QoSProfile, int]:
     #     pass
-        
-    def publish(self, publisher: Publisher,
-                      keypoints: Dict[int, np.array],
-                      header: Header):
+
+    def publish(
+        self,
+        publisher: Publisher,
+        keypoints: Dict[int, np.array],
+        header: Header,
+    ):
         skeleton_msg = build_skeleton_as_pose_array_msg(keypoints, header)
         publisher.publish(skeleton_msg)
-    
-    def get_message(self,
-                    keypoints: Dict[int, np.array],
-                    header: Header):
+
+    def get_message(self, keypoints: Dict[int, np.array], header: Header):
         return build_skeleton_as_pose_array_msg(keypoints, header)

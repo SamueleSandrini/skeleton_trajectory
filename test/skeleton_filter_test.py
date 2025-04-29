@@ -9,7 +9,7 @@ import time
 # import threading
 
 N_KEYPOINTS = 33
-FRAME_ID = "base_link"
+FRAME_ID = 'base_link'
 
 def get_nominal_skeleton():
     # Define nominal 3D positions for each keypoint to form a humanoid mannequin
@@ -77,40 +77,40 @@ def create_noisy_marker_array(n_keypoints=33, noise_std=0.03):
 
 class FakeSkeletonPublisher(Node):
     def __init__(self):
-        super().__init__("fake_skeleton_publisher")
-        self.marker_publisher = self.create_publisher(MarkerArray, "/skeleton_markers", 10)
+        super().__init__('fake_skeleton_publisher')
+        self.marker_publisher = self.create_publisher(MarkerArray, '/skeleton_markers', 10)
         self.timer = None
 
     def publish(self):
         msg = create_noisy_marker_array()
         self.marker_publisher.publish(msg)
-        self.get_logger().info("Published fake skeleton")
+        self.get_logger().info('Published fake skeleton')
 
     def start_publishing(self, frequency_hz=1.0):
         if self.timer is None:
             period = 1.0 / frequency_hz
             self.timer = self.create_timer(period, self.publish)
-            self.get_logger().info(f"Started publishing at {frequency_hz} Hz")
+            self.get_logger().info(f'Started publishing at {frequency_hz} Hz')
 
     def stop_publishing(self):
         if self.timer is not None:
             self.timer.cancel()
             self.destroy_timer(self.timer)
             self.timer = None
-            self.get_logger().info("Stopped publishing")
+            self.get_logger().info('Stopped publishing')
 
 class SkeletonFilterAnalyzer(Node):
     def __init__(self):
-        super().__init__("skeleton_filter_analyzer")
+        super().__init__('skeleton_filter_analyzer')
         self.marker_filtered_subscription = self.create_subscription(
             MarkerArray,
-            "/skeleton_markers_filtered",
+            '/skeleton_markers_filtered',
             self.filtered_listener_callback,
             10
         )
         self.marker_subscription = self.create_subscription(
             MarkerArray,
-            "/skeleton_markers",
+            '/skeleton_markers',
             self.nominal_listener_callback,
             10
         )
@@ -155,11 +155,11 @@ class SkeletonFilterAnalyzer(Node):
             marker_mean = marker_positions_np.mean(axis=0)
             marker_std = marker_positions_np.std(axis=0)
             filterd_marker_stats[marker_id] = {
-                "mean": marker_mean,
-                "std": marker_std
+                'mean': marker_mean,
+                'std': marker_std
             }
-            self.get_logger().info(f"Keypoint: {marker_id}, mean: {marker_mean}, std: {marker_std} ")
-        self.get_logger().info("Filtered data analysis complete.")
+            self.get_logger().info(f'Keypoint: {marker_id}, mean: {marker_mean}, std: {marker_std} ')
+        self.get_logger().info('Filtered data analysis complete.')
         
         nominal_marker_stats = {}
         for marker_id, positions in self.nominal_markers.items():
@@ -167,16 +167,16 @@ class SkeletonFilterAnalyzer(Node):
             marker_mean = marker_positions_np.mean(axis=0)
             marker_std = marker_positions_np.std(axis=0)
             nominal_marker_stats[marker_id] = {
-                "mean": marker_mean,
-                "std": marker_std
+                'mean': marker_mean,
+                'std': marker_std
             }
-            self.get_logger().info(f"Keypoint: {marker_id}, mean: {marker_mean}, std: {marker_std} ")
+            self.get_logger().info(f'Keypoint: {marker_id}, mean: {marker_mean}, std: {marker_std} ')
 
-        self.get_logger().info("Comparison")
+        self.get_logger().info('Comparison')
         for marker_id in self.filtered_markers.keys():
-            mean_diff = filterd_marker_stats[marker_id]["mean"] - nominal_marker_stats[marker_id]["mean"]
-            std_diff = filterd_marker_stats[marker_id]["std"] - nominal_marker_stats[marker_id]["std"]
-            self.get_logger().info(f"Keypoint: {marker_id}, mean difference: {mean_diff}, std difference: {std_diff} ")
+            mean_diff = filterd_marker_stats[marker_id]['mean'] - nominal_marker_stats[marker_id]['mean']
+            std_diff = filterd_marker_stats[marker_id]['std'] - nominal_marker_stats[marker_id]['std']
+            self.get_logger().info(f'Keypoint: {marker_id}, mean difference: {mean_diff}, std difference: {std_diff} ')
 
     def compute_filter_latency(self):
         if not self.nominal_marker_times or not self.filtered_marker_times:
@@ -190,7 +190,7 @@ class SkeletonFilterAnalyzer(Node):
         return np.mean([np.array(self.filtered_marker_times) - 
                         np.array(self.nominal_marker_times)])  # latency in milliseconds
 
-@pytest.mark.dependency(name="setUp")
+@pytest.mark.dependency(name='setUp')
 def test_setup():
     rclpy.init()
 
@@ -207,8 +207,8 @@ def skeleton_filter_node():
     return SkeletonFilterNode()
 
 
-@pytest.mark.dependency(name="skeleton_filter_node_test", 
-                        depends=["setUp"])
+@pytest.mark.dependency(name='skeleton_filter_node_test', 
+                        depends=['setUp'])
 def test_skeleton_filter_class(fake_skeleton_publisher):
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(fake_skeleton_publisher)
@@ -222,8 +222,8 @@ def test_skeleton_filter_class(fake_skeleton_publisher):
     fake_skeleton_publisher.stop_publishing()
     
 
-@pytest.mark.dependency(name="filter_removes_noise", 
-                        depends=["setUp", "skeleton_filter_node_test"])
+@pytest.mark.dependency(name='filter_removes_noise', 
+                        depends=['setUp', 'skeleton_filter_node_test'])
 def test_filter_removes_noise(fake_skeleton_publisher,
                               skeleton_analyzer,
                               skeleton_filter_node):
@@ -244,8 +244,8 @@ def test_filter_removes_noise(fake_skeleton_publisher,
     fake_skeleton_publisher.stop_publishing()
     skeleton_analyzer.analyze_filtered_data()
 
-@pytest.mark.dependency(name="test_filter_tlatency", 
-                        depends=["setUp", "skeleton_filter_node_test", "filter_removes_noise"])
+@pytest.mark.dependency(name='test_filter_tlatency', 
+                        depends=['setUp', 'skeleton_filter_node_test', 'filter_removes_noise'])
 def test_filter_tlatency(fake_skeleton_publisher,
                          skeleton_analyzer,
                          skeleton_filter_node):
@@ -268,17 +268,17 @@ def test_filter_tlatency(fake_skeleton_publisher,
 # @pytest.mark.rostest
 # def test_filter_removes_noise(monkeypatch):
 #     rclpy.init()
-#     node = rclpy.create_node("test_node")
+#     node = rclpy.create_node('test_node')
 
-#     pub = node.create_publisher(MarkerArray, "/skeleton_markers", 10)
-#     sub = node.create_subscription(MarkerArray, "/skeleton_markers_filtered", lambda msg: callback(msg, node), 10)
+#     pub = node.create_publisher(MarkerArray, '/skeleton_markers', 10)
+#     sub = node.create_subscription(MarkerArray, '/skeleton_markers_filtered', lambda msg: callback(msg, node), 10)
 
 #     received_messages = []
 
 #     def callback(msg, node):
 #         received_messages.append(msg)
 #         if len(received_messages) >= 10:
-#             node.get_logger().info("10 messages received, shutting down.")
+#             node.get_logger().info('10 messages received, shutting down.')
 #             rclpy.shutdown()
 
 #     # Pubblica messaggi rumorosi
@@ -305,15 +305,15 @@ def test_filter_tlatency(fake_skeleton_publisher,
     #     if len(positions) > 1:
     #         positions_np = np.array(positions)
     #         var = np.var(positions_np, axis=0)
-    #         print(f"Keypoint {kp_id} filtered variance: {var}")
-    #         assert np.all(var < 0.05), f"Filtered variance too high for keypoint {kp_id}: {var}"
+    #         print(f'Keypoint {kp_id} filtered variance: {var}')
+    #         assert np.all(var < 0.05), f'Filtered variance too high for keypoint {kp_id}: {var}'
 
     # node.destroy_node()
 
 # class FakeSkeletonPublisher(Node):
 #     def __init__(self):
-#         super().__init__("fake_skeleton_publisher")
-#         self.marker_publisher = self.create_publisher(MarkerArray, "/skeleton_markers", 10)
+#         super().__init__('fake_skeleton_publisher')
+#         self.marker_publisher = self.create_publisher(MarkerArray, '/skeleton_markers', 10)
         
 #     def publish(self):
 #         msg = create_noisy_marker_array()
