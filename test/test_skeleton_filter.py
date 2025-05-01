@@ -79,6 +79,7 @@ def create_noisy_marker_array(n_keypoints=33, noise_std=0.03):
 
 
 class FakeSkeletonPublisher(Node):
+
     def __init__(self):
         super().__init__('fake_skeleton_publisher')
         self.marker_publisher = self.create_publisher(MarkerArray, '/skeleton_markers', 10)
@@ -104,6 +105,7 @@ class FakeSkeletonPublisher(Node):
 
 
 class SkeletonFilterAnalyzer(Node):
+
     def __init__(self):
         super().__init__('skeleton_filter_analyzer')
         self.marker_filtered_subscription = self.create_subscription(
