@@ -13,7 +13,7 @@ To install and build the Skeleton Tracking package, follow these steps:
    Open a terminal and execute:
 
    ```bash
-   git clone https://github.com/SamueleSandrini/skeleton_trajectory.git -b ros2_wip src/skeleton_trajectory
+   git clone https://github.com/SamueleSandrini/skeleton_trajectory.git -b ros2
    cd src/skeleton_trajectory
    pip install -r requirements.txt
    ```
