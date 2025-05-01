@@ -35,7 +35,7 @@ N_KEYPOINTS = get_num_keypoints()
 
 
 class SkeletonFilterNode(Node):
-    
+
     def __init__(self):
         super().__init__('skeleton_filter_node')
 

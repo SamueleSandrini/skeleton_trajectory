@@ -25,7 +25,7 @@ R_DEFAULT = np.array([0.05, 0.05, 0.1]) / 90
 
 
 class KalmanFilter:
-    
+
     def __init__(self,
                  q_noise=Q_DEFAULT,
                  r_noise=R_DEFAULT,

@@ -49,7 +49,7 @@ def clamp(val, min_val, max_val):
 
 
 class SkeletonDetection(PostProcessing):
-    
+
     def __init__(self):
         self.internal_node = rclpy.create_node('skeleton_detection_node')
         self.skeleton_marker_publisher = self.internal_node.create_publisher(
