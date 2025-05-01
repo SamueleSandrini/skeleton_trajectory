@@ -206,7 +206,7 @@ class SkeletonFilterAnalyzer(Node):
             shared_samples = min(nominal_samples, filtered_samples)
             self.nominal_marker_times = self.nominal_marker_times[:shared_samples]
             self.filtered_marker_times = self.filtered_marker_times[:shared_samples]
-            self.get_logger().info("Trimming samples to match lengths, is just a raw approach")
+            self.get_logger().info('Trimming samples to match lengths, is just a raw approach')
         print(self.nominal_marker_times)
         print(self.filtered_marker_times)
         print(len(self.nominal_marker_times))
@@ -277,8 +277,8 @@ def test_filter_removes_noise(fake_skeleton_publisher,
 @pytest.mark.dependency(name='test_filter_latency',
                         depends=['setUp', 'skeleton_filter_node_test', 'filter_removes_noise'])
 def test_filter_latency(fake_skeleton_publisher,
-                         skeleton_analyzer,
-                         skeleton_filter_node):
+                        skeleton_analyzer,
+                        skeleton_filter_node):
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(fake_skeleton_publisher)
     executor.add_node(skeleton_filter_node)
