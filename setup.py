@@ -24,7 +24,7 @@ package_name = 'skeleton_tracking'
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(exclude=['test']),
+    packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -37,7 +37,8 @@ setup(
                       'mediapipe',
                       'visualization_msgs',
                       'rclpy',
-                      'mediapipe'],
+                      'mediapipe',
+                      'pytest-dependency'],
     zip_safe=True,
     maintainer='Samuele Sandrini',
     maintainer_email='samuele.sandrini@polito.it',
@@ -46,7 +47,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-           'skeleton_filter_node = skeleton_tracking.skeleton_filter_node:main',
+            'skeleton_filter_node = skeleton_tracking.skeleton_filter_node:main',
         ],
     },
 )

@@ -1,3 +1,4 @@
 mediapipe
 numpy
 opencv-python
+pytest-dependency

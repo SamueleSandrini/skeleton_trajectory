@@ -38,7 +38,7 @@ def generate_launch_description():
         parameters=[
             LaunchConfiguration('vision_config_path')
         ])
-    
+
     skeleton_filter_node_cmd = Node(
         package='skeleton_tracking',
         executable='skeleton_filter_node',
@@ -47,7 +47,7 @@ def generate_launch_description():
         parameters=[
             LaunchConfiguration('vision_config_path')
         ])
-    
+
     # Create the launch description and populate
     ld = LaunchDescription()
 

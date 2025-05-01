@@ -22,7 +22,7 @@
 # model = YOLO("yolov8n-pose.pt")
 
 # result = model.predict("test2.jpeg")
-#print keypoints
+# print keypoints
 # for single_instance in result:
 #     print(single_instance.keypoints)
 
@@ -79,4 +79,3 @@
 #   RIGHT_HEEL = 30
 #   LEFT_FOOT_INDEX = 31
 #   RIGHT_FOOT_INDEX = 32
-

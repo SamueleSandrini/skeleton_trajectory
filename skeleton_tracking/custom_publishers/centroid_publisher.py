@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from typing import Dict
+
+from geometry_msgs.msg import Pose, PoseArray
 import numpy as np
 from rclpy.publisher import Publisher
-from skeleton_tracking.custom_publishers.custom_publisher_base import (
-    CustomPublisherBase,
-)
-from geometry_msgs.msg import PoseArray, Pose
+from skeleton_tracking.custom_publishers.custom_publisher_base import CustomPublisherBase
 from std_msgs.msg import Header
 
 
@@ -51,18 +50,17 @@ class CentroidPublisher(CustomPublisherBase):
     # def get_qos_profile(self) -> Union[QoSProfile, int]:
     #     pass
 
-    def publish(
-        self,
-        publisher: Publisher,
-        keypoints: Dict[int, np.array],
-        header: Header,
-    ):
+    def publish(self, publisher: Publisher,
+                keypoints: Dict[int, np.array],
+                header: Header):
         # compute centroid of keypoints
         centroid_xyz = compute_centroid(keypoints)
         centroid_msg = build_centroid_msg(centroid_xyz, header)
 
         publisher.publish(centroid_msg)
 
-    def get_message(self, keypoints: Dict[int, np.array], header: Header):
+    def get_message(self,
+                    keypoints: Dict[int, np.array],
+                    header: Header):
         centroid_xyz = compute_centroid(keypoints)
         return build_centroid_msg(centroid_xyz, header)

@@ -13,12 +13,11 @@
 # limitations under the License.
 
 from typing import Dict
+
+from geometry_msgs.msg import Pose, PoseArray
 import numpy as np
 from rclpy.publisher import Publisher
-from skeleton_tracking.custom_publishers.custom_publisher_base import (
-    CustomPublisherBase,
-)
-from geometry_msgs.msg import PoseArray, Pose
+from skeleton_tracking.custom_publishers.custom_publisher_base import CustomPublisherBase
 from std_msgs.msg import Header
 
 
@@ -46,14 +45,13 @@ class PoseArrayPublisher(CustomPublisherBase):
     # def get_qos_profile(self) -> Union[QoSProfile, int]:
     #     pass
 
-    def publish(
-        self,
-        publisher: Publisher,
-        keypoints: Dict[int, np.array],
-        header: Header,
-    ):
+    def publish(self, publisher: Publisher,
+                keypoints: Dict[int, np.array],
+                header: Header):
         skeleton_msg = build_skeleton_as_pose_array_msg(keypoints, header)
         publisher.publish(skeleton_msg)
 
-    def get_message(self, keypoints: Dict[int, np.array], header: Header):
+    def get_message(self,
+                    keypoints: Dict[int, np.array],
+                    header: Header):
         return build_skeleton_as_pose_array_msg(keypoints, header)

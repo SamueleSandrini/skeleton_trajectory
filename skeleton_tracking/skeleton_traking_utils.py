@@ -1,3 +1,4 @@
+
 # Copyright 2024 National Research Council STIIMA
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Point
+
 import mediapipe as mp
+from visualization_msgs.msg import Marker, MarkerArray
 
 
 def build_skeleton_topology_msg(keypoints, header):
@@ -42,12 +44,12 @@ def build_skeleton_topology_msg(keypoints, header):
     return skeleton
 
 
-def create_marker_msg(id, x, y, z, header):
+def create_marker_msg(marker_id, x, y, z, header):
     marker = Marker()
     marker.header = header
 
     marker.ns = 'skeleton'
-    marker.id = id
+    marker.id = marker_id
     marker.type = Marker.SPHERE
 
     marker.action = Marker.ADD
@@ -70,9 +72,11 @@ def create_marker_msg(id, x, y, z, header):
 def build_marker_array_msg(keypoints, header):
     marker_array = MarkerArray()
     for index, keypoint in keypoints.items():
-        marker = create_marker_msg(
-            index, keypoint[0], keypoint[1], keypoint[2], header
-        )
+        marker = create_marker_msg(index,
+                                   keypoint[0],
+                                   keypoint[1],
+                                   keypoint[2],
+                                   header)
         marker_array.markers.append(marker)
     return marker_array
 

@@ -1,3 +1,4 @@
+
 # Copyright 2024 National Research Council STIIMA
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict
+
 import numpy as np
 from rclpy.publisher import Publisher
 from std_msgs.msg import Header
@@ -34,14 +36,11 @@ class CustomPublisherBase(ABC):
     #     pass
 
     @abstractmethod
-    def publish(
-        self,
-        publisher: Publisher,
-        keypoints: Dict[int, np.array],
-        header: Header,
-    ):
+    def publish(self, publisher: Publisher, keypoints: Dict[int, np.array], header: Header):
         pass
 
     @abstractmethod
-    def get_message(self, keypoints: Dict[int, np.array], header: Header):
+    def get_message(self,
+                    keypoints: Dict[int, np.array],
+                    header: Header):
         pass
