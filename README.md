@@ -1,8 +1,9 @@
 # Skeleton tracking 
 [![GitHub Action
-Status](https://github.com/SamueleSandrini/skeleton_trajectory/tree/ros2_wip/workflows/humble/badge.svg)](https://github.com/SamueleSandrini/skeleton_trajectory/tree/ros2_wip)
+Status](https://github.com/SamueleSandrini/skeleton_trajectory/workflows/humble/badge.svg)](https://github.com/SamueleSandrini/skeleton_trajectory)
 
 ROS 2 Package for human tracking.
+
 ## Installation
 
 To install and build the Skeleton Tracking package, follow these steps:
