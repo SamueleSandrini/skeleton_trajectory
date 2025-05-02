@@ -39,7 +39,7 @@ jobs:
                 "parallel-workers" : 1
               }
             }
-          vcs-repo-file-url: https://raw.githubusercontent.com/SamueleSandrini/skeleton_trajectory/refs/heads/ros2_wip/dependencies.repos
+          vcs-repo-file-url: https://raw.githubusercontent.com/SamueleSandrini/skeleton_trajectory/refs/heads/ros2/dependencies.repos
 
 #      - name: Run Tests
 #        run: |
