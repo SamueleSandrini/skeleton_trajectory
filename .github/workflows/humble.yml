@@ -3,10 +3,10 @@ name: humble
 on:
   pull_request:
     branches:
-      - ros2_wip
+      - ros2
   push:
     branches:
-      - ros2_wip
+      - ros2
 jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}
