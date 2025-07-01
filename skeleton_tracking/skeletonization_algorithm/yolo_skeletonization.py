@@ -1,8 +1,8 @@
 from skeleton_tracking.skeletonization_algorithm.skeletonization_algorithm import (
-    BaseSkeletonizationAlgorithm, Skeleton2D, Keypoint2D, KeypointID
-)
+    BaseSkeletonizationAlgorithm)
+from skeleton_tracking.skeleton_interfaces import (
+    Skeleton2D, Skeleton3D, Keypoint2D, KeypointID)
 from typing import List, Tuple, Type, Dict, Any
-from enum import IntEnum
 import numpy as np
 from ultralytics import YOLO
 
@@ -51,35 +51,52 @@ class YoloPoseSkeletonization(BaseSkeletonizationAlgorithm):
         self.device = params.get("device", "cpu")
         
         self.model = YOLO(model_path, )
+        self.results = None
 
     @staticmethod
-    def get_parameters_names() -> List[str]:
-        return ["model_path", "device"]
+    def get_parameters_names() -> List[Tuple[str, Any]]:
+        return [("model_path", "yolov8n-pose.pt"), 
+                ("device", "cpu")]
 
     def extract_skeletons(self, rgb_image: np.ndarray) -> List[Skeleton2D]:
-        results = self.model(rgb_image)
-        skeletons = []
+        self.results = self.model(rgb_image)
 
-        for idx, result in enumerate(results):
-            keypoints = []
+        # print(type(results))
+        skeletons = []
+        # print(f'Lunghezza result {len(results)}')
+        for idx, result in enumerate(self.results):
+            # print(type(result))
+            # dfsafa
             if result.keypoints is not None:
                 keypoints_array = result.keypoints.xy.cpu().numpy()
                 confidences = result.keypoints.conf.cpu().numpy()
+                # print(f"Keypoints Array: {keypoints_array}")
+                # print(confidences)
+                for skeleton_id, (xy_s, conf_s) in enumerate(zip(keypoints_array, confidences)):
+                    keypoints = []
+                    for kp_idx, (xy, conf) in enumerate(zip(xy_s, conf_s)):
+                        # print(f"XY: {xy}")
+                        # print(type(xy))
+                        # print(conf)
+                        # print(type(conf))
+                        keypoints.append(Keypoint2D(
+                            id=CocoKeypointID(kp_idx),
+                            x=xy[0],
+                            y=xy[1],
+                            metadata={"confidence": float(conf)}
+                        ))
+                    # print(f"XY: {xy}")
+                    # print(type(xy))
+                    # print(conf)
+                    # print(type(conf))
+                    # keypoints.append(Keypoint2D(
+                    #     id=CocoKeypointID(kp_idx),
+                    #     x=xy[0],
+                    #     y=xy[1],
+                    #     metadata={"confidence": float(conf)}
+                    # ))
 
-                for kp_idx, (xy, conf) in enumerate(zip(keypoints_array, confidences)):
-                    print(xy)
-                    print(type(xy))
-                    print(conf)
-                    print(type(conf))
-                    keypoints.append(Keypoint2D(
-                        id=CocoKeypointID(kp_idx),
-                        x=xy[0],
-                        y=xy[1],
-                        metadata={"confidence": float(conf)}
-                    ))
-
-                skeletons.append(Skeleton2D(id=idx, keypoints=keypoints))
-
+                    skeletons.append(Skeleton2D(id=skeleton_id, keypoints=keypoints))
         return skeletons
 
     @property
@@ -89,3 +106,11 @@ class YoloPoseSkeletonization(BaseSkeletonizationAlgorithm):
     @property
     def keypoint_enum(self) -> Type[KeypointID]:
         return CocoKeypointID
+
+    def is_not_person(self, skeleton: Skeleton3D) -> bool:
+        return True
+
+    def get_color_frame_with_detection(self, 
+        rgb_image: np.ndarray
+    ) -> np.ndarray:
+        return self.results[0].plot().copy()

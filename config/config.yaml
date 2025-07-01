@@ -17,6 +17,11 @@ camera_node:
       class: "SkeletonDetection"
 
     skeleton_detection_node:
+      skeleton_algorithm: 'mediapipe'
+      mediapipe: 
+        min_detection_confidence: 0.8
+        min_tracking_confidence: 0.5
+
       roi_half_size: 1
       debug_topic: True
 

@@ -1,7 +1,8 @@
 from skeleton_tracking.skeletonization_algorithm.skeletonization_algorithm import (
-    BaseSkeletonizationAlgorithm, Skeleton2D, Keypoint2D, KeypointID
-)
-from typing import List, Tuple, Type
+    BaseSkeletonizationAlgorithm)
+from skeleton_tracking.skeleton_interfaces import (
+  Skeleton2D, Keypoint2D, KeypointID, Skeleton3D)
+from typing import List, Tuple, Type, Any
 import mediapipe as mp
 import numpy as np
 from enum import IntEnum
@@ -20,21 +21,22 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
             min_detection_confidence = min_detection_confidence,
             min_tracking_confidence = min_tracking_confidence
         )
+        self.results = None
 
     @staticmethod
-    def get_parameters_names() -> List[str]:
-        return ["min_detection_confidence", 
-                "min_tracking_confidence"]
+    def get_parameters_names() -> List[Tuple[str, Any]]:
+        return [("min_detection_confidence", 0.5), 
+                ("min_tracking_confidence", 0.5)]
 
     def extract_skeletons(self, rgb_image: np.ndarray) -> List[Skeleton2D]:
         skeletons = []
-        results = self.pose.process(rgb_image)
+        self.results = self.pose.process(rgb_image)
 
-        if results.pose_landmarks:
+        if self.results.pose_landmarks:
             skeleton_id = 1
             keypoints = []
 
-            for idx, landmark in enumerate(results.pose_landmarks.landmark):
+            for idx, landmark in enumerate(self.results.pose_landmarks.landmark):
                 keypoints.append(Keypoint2D(
                     id = MediaPipeKeypointID(idx),
                     x = landmark.x,
@@ -56,3 +58,49 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
     @property
     def keypoint_enum(self) -> Type[KeypointID]:
         return MediaPipeKeypointID
+
+    def get_color_frame_with_detection(self, 
+        rgb_image: np.ndarray,
+    ) -> np.ndarray:
+        color_frame_with_detection = rgb_image.copy()
+        mp.solutions.drawing_utils.draw_landmarks(color_frame_with_detection,
+                                                  self.results.pose_landmarks,
+                                                  mp.solutions.pose.POSE_CONNECTIONS)
+        return color_frame_with_detection
+
+
+    def is_not_person(self, skeleton: Skeleton3D) -> bool:
+        # Check left shoulder to left hip distance
+        mp_pose = mp.solutions.pose
+        landmark_dict = {kp.id: kp for kp in skeleton.keypoints}
+        indexes_present = landmark_dict.keys()
+        if (mp_pose.PoseLandmark.LEFT_SHOULDER.value in indexes_present and
+                mp_pose.PoseLandmark.LEFT_HIP.value in indexes_present):
+
+            idx_left_shoulder = indexes_present.index(mp_pose.PoseLandmark.LEFT_SHOULDER.value)
+            idx_left_hip = indexes_present.index(mp_pose.PoseLandmark.LEFT_HIP.value)
+            left_bust = np.linalg.norm(np.array(landmark_dict[idx_left_shoulder]) -
+                                       np.array(landmark_dict[idx_left_hip]))
+
+            if left_bust < 0.25 or left_bust > 1.2:  # Converted to meters
+                return True
+
+        # Check right shoulder to right hip distance
+        if (mp_pose.PoseLandmark.RIGHT_SHOULDER.value in indexes_present and
+                mp_pose.PoseLandmark.RIGHT_HIP.value in indexes_present):
+
+            idx_right_shoulder = indexes_present.index(mp_pose.PoseLandmark.RIGHT_SHOULDER.value)
+            idx_right_hip = indexes_present.index(mp_pose.PoseLandmark.RIGHT_HIP.value)
+            right_bust = np.linalg.norm(np.array(landmark_dict[idx_right_shoulder]) -
+                                        np.array(landmark_dict[idx_right_hip]))
+
+            if right_bust < 0.25 or right_bust > 1.2:  # Converted to meters
+                return True
+
+        # Check if there are fewer than two keypoints detected
+        if len(indexes_present) < 2:
+            self.internal_node.get_logger().info(
+                'Keypoints detected for the human are less than 2.')
+            return True
+
+        return False
