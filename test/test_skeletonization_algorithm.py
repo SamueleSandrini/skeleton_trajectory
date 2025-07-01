@@ -22,7 +22,8 @@ def test_image():
 
 
 def test_mediapipe_extract_skeletons(test_image):
-    skeletonization_alg = MediaPipeSkeletonization(params={"min_detection_confidence": 0.3})
+    skeletonization_alg = MediaPipeSkeletonization()
+    skeletonization_alg.initialize(params={"min_detection_confidence": 0.3})
     skeletons = skeletonization_alg.extract_skeletons(test_image)
 
     assert isinstance(skeletons, list)
@@ -38,7 +39,8 @@ def test_mediapipe_extract_skeletons(test_image):
 
 
 def test_mediapipe_topology_and_enum():
-    skeletonization_alg = MediaPipeSkeletonization({})
+    skeletonization_alg = MediaPipeSkeletonization()
+    skeletonization_alg.initialize(params={})
     topology = skeletonization_alg.topology
     # enum_class = algo.keypoint_enum
 

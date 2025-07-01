@@ -28,7 +28,7 @@ from vision_system.post_processing import PostProcessing
 from vision_system.vision_system_utils import deproject_pixel_to_point
 from visualization_msgs.msg import Marker, MarkerArray
 from skeleton_tracking.skeletonization_algorithm.skeletonization_algorithm import (
-    load_skeleton_algorithm
+    load_skeleton_algorithm, BaseSkeletonizationAlgorithm
 )
 from skeleton_tracking.skeleton_interfaces import Skeleton3D, Keypoint3D, KeypointID
 from typing import List, Dict, Any, Tuple
@@ -68,43 +68,50 @@ class SkeletonDetection(PostProcessing):
         self.debug_publisher = self.internal_node.create_publisher(
             Image, 'debug_skeleton_detection_image', 10)
         
-        self.internal_node.declare_parameter('skeleton_algorithm', 'mediapipe')
+        self.internal_node.declare_parameter('skeleton_detection_node.skeleton_algorithm', 'mediapipe')
         # self.declare_parameter('skeleton_algorithm_params', {})
-        self.internal_node.declare_parameter('skeleton_algorithm_module', '')
-        self.internal_node.declare_parameter('skeleton_algorithm_class', '')
+        self.internal_node.declare_parameter('skeleton_detection_node.skeleton_algorithm_module', '')
 
-        skeleton_algorithm_name = self.get_parameter('skeleton_algorithm').value
+        skeleton_algorithm_name = self.internal_node.get_parameter('skeleton_detection_node.skeleton_algorithm').value
+        self.internal_node.get_logger().info(
+            f'Skeleton algorithm name: {skeleton_algorithm_name}')
         # skeleton_algorithm_params = self.get_parameter('skeleton_algorithm_params').value
 
+        skeleton_algorithm_module = None
         if skeleton_algorithm_name not in SKELETON_ALGORITHM_MODULE_MAP:
-            self.get_logger().info('Skeleton algorithm not recognized, trying to load custom module...')
-            skeleton_algorithm_module = self.get_parameter('skeleton_algorithm_module').value
-            skeleton_algorithm_class = self.get_parameter('skeleton_algorithm_class').value
-            if not self.skeleton_algorithm_module or not self.skeleton_algorithm_class:
-                self.get_logger().error("Custom algorithm specified, but module or class is missing!")
+            self.internal_node.get_logger().info('Skeleton algorithm not recognized, trying to load custom module...')
+            skeleton_algorithm_module = self.internal_node.get_parameter('skeleton_detection_node.skeleton_algorithm_module').value
+            if not skeleton_algorithm_module:
+                self.internal_node.get_logger().error("Custom algorithm specified, but module or class is missing!")
                 raise ValueError("Custom algorithm module or class not specified.")
-            skeleton_algorithm = load_skeleton_algorithm(skeleton_algorithm_module, 
-                                                         skeleton_algorithm_class)
+            # skeleton_algorithm = load_skeleton_algorithm()
         else:
-            skeleton_algorithm = SKELETON_ALGORITHM_MODULE_MAP[skeleton_algorithm_name]
-            self.internal_node.get_logger().info(f'Using skeleton algorithm: {self.skeleton_algorithm}')
-        skelton_algorithm_params_name = skeleton_algorithm.get_parameters_names()
-        sekelton_algorithm_params = {}
-        for (param_name, param_default) in skelton_algorithm_params_name:
-            self.internal_node.declare_parameter(skeleton_algorithm_name + '.' + param_name, 
+            skeleton_algorithm_module = SKELETON_ALGORITHM_MODULE_MAP[skeleton_algorithm_name]
+            self.internal_node.get_logger().info(f'Using skeleton algorithm: {skeleton_algorithm_module}')
+
+        self.skeleton_algorithm = load_skeleton_algorithm(
+            skeleton_algorithm_module)
+        skeleton_algorithm_params_name = self.skeleton_algorithm.get_parameters_names()
+        skeleton_algorithm_params = {}
+        for (param_name, param_default) in skeleton_algorithm_params_name:
+            self.internal_node.get_logger().info(
+                f'skeleton_detection_node.{skeleton_algorithm_name}.{param_name}')
+            self.internal_node.declare_parameter(f'skeleton_detection_node.{skeleton_algorithm_name}.{param_name}', 
                                                  param_default)
-            sekelton_algorithm_params[param_name] = self.internal_node.get_parameter(
-                skeleton_algorithm_name + '.' + param_name).value
-        self.skeleton_algorithm = skeleton_algorithm(sekelton_algorithm_params)
+            skeleton_algorithm_params[param_name] = self.internal_node.get_parameter(
+                f'skeleton_detection_node.{skeleton_algorithm_name}.{param_name}').value
+            self.internal_node.get_logger().info(
+                f'Skeleton algorithm parameter: {param_name} = {skeleton_algorithm_params[param_name]}')
+        self.skeleton_algorithm.initialize(skeleton_algorithm_params)
 
         self.internal_node.declare_parameter('skeleton_detection_node.debug_topic', True)
         self.internal_node.declare_parameter('skeleton_detection_node.roi_half_size', 0)
 
         self.debug = self.internal_node.get_parameter('skeleton_detection_node.debug_topic').value
-        self.min_detection_confidence = self.internal_node.get_parameter(
-            'skeleton_detection_node.min_detection_confidence').value
-        self.min_tracking_confidence = self.internal_node.get_parameter(
-            'skeleton_detection_node.min_tracking_confidence').value
+        # self.min_detection_confidence = self.internal_node.get_parameter(
+        #     'skeleton_detection_node.min_detection_confidence').value
+        # self.min_tracking_confidence = self.internal_node.get_parameter(
+        #     'skeleton_detection_node.min_tracking_confidence').value
         self.roi_half_size = self.internal_node.get_parameter(
             'skeleton_detection_node.roi_half_size').value
 
@@ -218,7 +225,9 @@ class SkeletonDetection(PostProcessing):
                 # indexes.append(keypoint_id)
                 # keypoints_3d.append((x_m, y_m, z_m))
 
-            if self.is_not_person(skeleton_3d):
+            if self.skeleton_algorithm.is_not_person(skeleton_3d):
+                # self.internal_node.get_logger().info(
+                #     f'Skeleton {skeleton_3d.id} is not a person, skipping.')
                 continue
             skeletons_3d.append(skeleton_3d)
             marker = self.create_marker_msg(keypoint.id, x_m, y_m, z_m)
@@ -230,7 +239,7 @@ class SkeletonDetection(PostProcessing):
         if self.debug:
             self.debug_publisher.publish(
                 self.cv_bridge.cv2_to_imgmsg(
-                    self.self.skeleton_algorithm.get_color_frame_with_detection(color_frame)))
+                    self.skeleton_algorithm.get_color_frame_with_detection(color_frame)))
 
     # def is_not_person(self, indexes_present, landmark_list):
     #     # Check left shoulder to left hip distance

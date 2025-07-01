@@ -44,22 +44,33 @@ COCO_POSE_CONNECTIONS: List[Tuple[CocoKeypointID, CocoKeypointID]] = [
     (CocoKeypointID.RIGHT_KNEE, CocoKeypointID.RIGHT_ANKLE),
 ]
 
-class YoloPoseSkeletonization(BaseSkeletonizationAlgorithm):
-    def __init__(self, params: Dict[str, Any]):
+class YoloSkeletonization(BaseSkeletonizationAlgorithm):
+    def __init__(self):
+        pass
+        # model_path = params.get("model_path", 
+        #                         "yolov8n-pose.pt")
+        # self.device = params.get("device", "cpu")
+        
+        # self.model = YOLO(model_path, )
+        # self.results = None
+
+    def initialize(self, params: Dict[str, Any]):
         model_path = params.get("model_path", 
                                 "yolov8n-pose.pt")
         self.device = params.get("device", "cpu")
+        self.confidence_threshold = params.get("confidence_threshold")
         
-        self.model = YOLO(model_path, )
+        self.model = YOLO(model_path)
         self.results = None
 
     @staticmethod
     def get_parameters_names() -> List[Tuple[str, Any]]:
         return [("model_path", "yolov8n-pose.pt"), 
-                ("device", "cpu")]
+                ("device", "cpu"),
+                ("confidence_threshold", 0.25)]  # Default confidence threshold for YOLOv8
 
     def extract_skeletons(self, rgb_image: np.ndarray) -> List[Skeleton2D]:
-        self.results = self.model(rgb_image)
+        self.results = self.model.predict(rgb_image, device=self.device, conf=self.confidence_threshold)
 
         # print(type(results))
         skeletons = []

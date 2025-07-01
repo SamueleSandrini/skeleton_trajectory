@@ -17,11 +17,14 @@ camera_node:
       class: "SkeletonDetection"
 
     skeleton_detection_node:
-      skeleton_algorithm: 'mediapipe'
+      skeleton_algorithm: 'yolo'
       mediapipe: 
         min_detection_confidence: 0.8
         min_tracking_confidence: 0.5
-
+      yolo:
+        model_path: "yolov8n-pose.pt"
+        device: "cpu"
+        confidence_threshold: 0.7
       roi_half_size: 1
       debug_topic: True
 
