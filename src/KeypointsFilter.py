@@ -2,6 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseArray, TwistStamped, Transform, Vector3, TransformStamped
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from visualization_msgs.msg import Marker, MarkerArray
 import tf2_ros
 import numpy as np
@@ -18,6 +19,7 @@ SKELETON_FILTERED = 'skeleton_filtered'
 SKELETON_FILTERED_ARRAY = 'poses'
 KEYPOINT_VELOCITY = 'keypoint_velocity'
 VARIANCE_MARKER = 'marker_variance'
+SKELETON_TRJ_PUB = 'skeleton_trajectory'
 
 CENTROID_ARRAY = 'centroids'
 
@@ -83,7 +85,7 @@ class KeypointsFilter():
         self.pubSkeletonFilteredArray = rospy.Publisher(self.camera_ns + '/'+ SKELETON_FILTERED_ARRAY,PoseArray, queue_size = 100)
 
         self.pubCentroidArray = rospy.Publisher(self.camera_ns + '/' + CENTROID_ARRAY, PoseArray, queue_size = 100)
-
+        self.pub_skeleton_trj = rospy.Publisher(self.camera_ns + '/' + SKELETON_TRJ_PUB, JointTrajectory, queue_size = 100)
 
         #Publisher Keypoint velocity
         self.pubKeypointVelocity = rospy.Publisher(self.camera_ns + '/'+ KEYPOINT_VELOCITY, TwistStamped, queue_size = 100)
@@ -109,6 +111,11 @@ class KeypointsFilter():
         self.skeleton.color.g = 2.0
         self.skeleton.color.b = 0.0
         self.skeleton.color.a =0.7
+
+        self.skelton_trj = JointTrajectory()
+        self.skelton_trj.header.stamp = rospy.Time.now()
+        self.skelton_trj.header.frame_id = CAMERA_FRAME
+
 
         for keypoint in keypoints.markers:
 
@@ -178,10 +185,20 @@ class KeypointsFilter():
             self.listOfIndexesPres.append(idKeypoint)
             self.listKeypoints.append(self.marker.pose)
 
+            # Skeelton trj
+            self.skelton_trj.joint_names.append('keypoint_' + str(idKeypoint))
+            keyp_tryj_point = JointTrajectoryPoint()
+            keyp_tryj_point.positions = [yFiltered[0], yFiltered[1], yFiltered[2]]
+            keyp_tryj_point.velocities = self.keypointsFilters[idKeypoint].getCartesianVelocity()
+            keyp_tryj_point.accelerations = self.keypointsFilters[idKeypoint].getCartesianAcceleration()
+
+            self.skelton_trj.points.append(keyp_tryj_point)
+
+
         self.skeleton.header.stamp = rospy.Time.now()
         self.skeleton.header.frame_id=self.frame_id
 
-        #Iterate all non detected keypoints and update it in open loop if the time passed is not too much (approximate 3 samples)
+        # Iterate all non detected keypoints and update it in open loop if the time passed is not too much (approximate 3 samples)
         for idKeypointNotDetected in np.setdiff1d(np.array(range(0,N_KEYPOINTS)),self.listOfIndexesPres):
             if self.isKeypointTracked[idKeypointNotDetected]:
                 yModel = self.keypointsFilters[idKeypointNotDetected].updateOpenLoop()  #It returns
@@ -201,6 +218,16 @@ class KeypointsFilter():
                 self.markerVariance.id = idKeypointNotDetected
                 self.markerVariance.pose = Pose(Point(yModel[0],yModel[1],yModel[2]),Quaternion(self.keypointsFilters[idKeypointNotDetected].getPosDevSt()[0],self.keypointsFilters[idKeypointNotDetected].getPosDevSt()[1],self.keypointsFilters[idKeypointNotDetected].getPosDevSt()[2],1))
                 self.pubMarkerVariance.publish(self.markerVariance)
+
+                 ## Add also these points to skeleton trj             
+                self.skelton_trj.joint_names.append('keypoint_' + str(idKeypointNotDetected))
+                keyp_tryj_point = JointTrajectoryPoint()
+                keyp_tryj_point.positions = [yModel[0],yModel[1],yModel[2]]
+                keyp_tryj_point.velocities = self.keypointsFilters[idKeypointNotDetected].getCartesianVelocity()
+                keyp_tryj_point.accelerations = self.keypointsFilters[idKeypointNotDetected].getCartesianAcceleration()
+
+                self.skelton_trj.points.append(keyp_tryj_point)
+
         #Create pose array of all filtered KeyPoints
         skeletonArrayFiltered = PoseArray()
         skeletonArrayFiltered.header.stamp = rospy.Time.now()
@@ -209,6 +236,7 @@ class KeypointsFilter():
         #print(self.listKeypoints)
         skeletonArrayFiltered.poses = self.listKeypoints
         self.pubSkeletonFilteredArray.publish(skeletonArrayFiltered)
+        self.pub_skeleton_trj.publish(self.skelton_trj)
 
         # mean of keypoints and publish on /centroids
         centroid = PoseArray()
