@@ -45,6 +45,15 @@ class BaseSkeletonizationAlgorithm(ABC):
     ) -> np.ndarray:
         pass
 
+    @abstractmethod
+    def are_keypoints_normalized(self) -> bool:
+        """
+        Return True if the keypoints are normalized in [0,1], 
+        False if they are in pixel coordinates.
+        """
+        pass
+
+
 def load_skeleton_algorithm(full_module_name: str) -> BaseSkeletonizationAlgorithm:
     """
     Dynamically loads and instantiates a skeletonization algorithm.

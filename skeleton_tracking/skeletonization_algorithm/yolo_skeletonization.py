@@ -79,7 +79,13 @@ class YoloSkeletonization(BaseSkeletonizationAlgorithm):
             # print(type(result))
             # dfsafa
             if result.keypoints is not None:
+                # print(result.keypoints)
+                # print(result.keypoints.xy)
+                # print(result.keypoints.conf)
                 keypoints_array = result.keypoints.xy.cpu().numpy()
+
+                if keypoints_array.size == 0:
+                    continue
                 confidences = result.keypoints.conf.cpu().numpy()
                 # print(f"Keypoints Array: {keypoints_array}")
                 # print(confidences)
@@ -119,9 +125,12 @@ class YoloSkeletonization(BaseSkeletonizationAlgorithm):
         return CocoKeypointID
 
     def is_not_person(self, skeleton: Skeleton3D) -> bool:
-        return True
+        return False
 
     def get_color_frame_with_detection(self, 
         rgb_image: np.ndarray
     ) -> np.ndarray:
         return self.results[0].plot().copy()
+
+    def are_keypoints_normalized(self) -> bool:
+        return False

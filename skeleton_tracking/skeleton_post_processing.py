@@ -108,10 +108,6 @@ class SkeletonDetection(PostProcessing):
         self.internal_node.declare_parameter('skeleton_detection_node.roi_half_size', 0)
 
         self.debug = self.internal_node.get_parameter('skeleton_detection_node.debug_topic').value
-        # self.min_detection_confidence = self.internal_node.get_parameter(
-        #     'skeleton_detection_node.min_detection_confidence').value
-        # self.min_tracking_confidence = self.internal_node.get_parameter(
-        #     'skeleton_detection_node.min_tracking_confidence').value
         self.roi_half_size = self.internal_node.get_parameter(
             'skeleton_detection_node.roi_half_size').value
 
@@ -184,18 +180,27 @@ class SkeletonDetection(PostProcessing):
     def process_frames(self, color_frame, distance_frame):
         skeletons = self.skeleton_algorithm.extract_skeletons(color_frame)
         if not skeletons:
+            # self.internal_node.get_logger().info("IFFFFF")
             return
-        
+
         skeletons_3d = []
         for skeleton in skeletons:
+
             marker_array = MarkerArray()
             skeleton_3d = Skeleton3D(id = skeleton.id, frame_id = self.camera_info.header.frame_id, keypoints = [])
+            self.internal_node.get_logger().info(f'Lunghezza keyp {len(skeleton.keypoints)}')
             for keypoint in skeleton.keypoints:
-                if not (keypoint.x < 1 and keypoint.y < 1 and keypoint.x > 0 and keypoint.y > 0):
-                    continue
-                x, y = de_normalize_keypoint(keypoint,
-                                            self.camera_info.width,
-                                            self.camera_info.height)
+                self.internal_node.get_logger().info(f'Keypoint: {keypoint}')
+                if self.skeleton_algorithm.are_keypoints_normalized():
+                    x, y = de_normalize_keypoint(keypoint,
+                                                self.camera_info.width,
+                                                self.camera_info.height)
+                else:
+                    x, y = floor(keypoint.x), floor(keypoint.y)
+                
+                if not(x < self.camera_info.width and y < self.camera_info.height and x >= 0 and y >= 0):
+                    self.internal_node.get_logger().info("Keypoint not valid")
+                    continue    
 
                 y_min = clamp(y - self.roi_half_size, 0, self.camera_info.height - 1)
                 # +1 to include the last pixel
@@ -208,7 +213,7 @@ class SkeletonDetection(PostProcessing):
 
                 # Filters out invalid values and calculates the mean ignoring zero and NaN
                 valid_values = roi_distance[(roi_distance > 0) & np.isfinite(roi_distance)]
-
+                
                 if valid_values.size > 0:
                     average_depth_pixels = np.mean(valid_values)
                 else:
@@ -221,17 +226,22 @@ class SkeletonDetection(PostProcessing):
                                          x = x_m,
                                          y = y_m,
                                          z = z_m)
+                print(keypoint_3d)
                 skeleton_3d.append_keypoint(keypoint_3d)
                 # indexes.append(keypoint_id)
                 # keypoints_3d.append((x_m, y_m, z_m))
 
+                marker = self.create_marker_msg(keypoint.id, x_m, y_m, z_m)
+                # print(marker)
+                marker_array.markers.append(marker)
+
             if self.skeleton_algorithm.is_not_person(skeleton_3d):
+                self.internal_node.get_logger().info("Is not a person")
                 # self.internal_node.get_logger().info(
                 #     f'Skeleton {skeleton_3d.id} is not a person, skipping.')
                 continue
             skeletons_3d.append(skeleton_3d)
-            marker = self.create_marker_msg(keypoint.id, x_m, y_m, z_m)
-            marker_array.markers.append(marker)
+            # print(marker_array)
             self.skeleton_marker_publisher.publish(marker_array)
             self.skeleton_topology_publisher.publish(
                 self.build_skeleton_topology_msg(self.skeleton_algorithm.topology, skeleton_3d))

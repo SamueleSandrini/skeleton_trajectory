@@ -41,4 +41,4 @@ class Skeleton3D:
         """
         Append a keypoint to the skeleton.
         """
-        self.keypoints.append(keypoint)
+        self.keypoints.append(keypoint)    

@@ -15,15 +15,6 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
     
     def __init__(self):
         pass
-        # , params: dict):
-        # min_detection_confidence = params.get("min_detection_confidence", 0.5)
-        # min_tracking_confidence = params.get("min_tracking_confidence", 0.5)
-
-        # self.pose = mp.solutions.pose.Pose(
-        #     min_detection_confidence = min_detection_confidence,
-        #     min_tracking_confidence = min_tracking_confidence
-        # )
-        # self.results = None
 
     def initialize(self, params: dict):
         min_detection_confidence = params.get("min_detection_confidence", 0.5)
@@ -34,6 +25,7 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
             min_tracking_confidence = min_tracking_confidence
         )
         self.results = None
+    
     @staticmethod
     def get_parameters_names() -> List[Tuple[str, Any]]:
         return [("min_detection_confidence", 0.5), 
@@ -63,8 +55,6 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
     @property
     def topology(self) -> List[Tuple[KeypointID, KeypointID]]:
         return list(mp.solutions.pose.POSE_CONNECTIONS)
-        # return [(MediaPipeKeypointID(a), MediaPipeKeypointID(b)) 
-        #         for a, b in mp.solutions.pose.POSE_CONNECTIONS]
 
     @property
     def keypoint_enum(self) -> Type[KeypointID]:
@@ -88,8 +78,6 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
         if (mp_pose.PoseLandmark.LEFT_SHOULDER.value in indexes_present and
                 mp_pose.PoseLandmark.LEFT_HIP.value in indexes_present):
 
-            # idx_left_shoulder = indexes_present[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
-            # idx_left_hip = indexes_present[mp_pose.PoseLandmark.LEFT_HIP.value]
             left_bust = np.linalg.norm(np.array(landmark_dict[mp_pose.PoseLandmark.LEFT_SHOULDER.value]) -
                                        np.array(landmark_dict[mp_pose.PoseLandmark.LEFT_HIP.value]))
 
@@ -100,8 +88,6 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
         if (mp_pose.PoseLandmark.RIGHT_SHOULDER.value in indexes_present and
                 mp_pose.PoseLandmark.RIGHT_HIP.value in indexes_present):
 
-            # idx_right_shoulder = indexes_present[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
-            # idx_right_hip = indexes_present[mp_pose.PoseLandmark.RIGHT_HIP.value]
             right_bust = np.linalg.norm(np.array(landmark_dict[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]) -
                                         np.array(landmark_dict[mp_pose.PoseLandmark.RIGHT_HIP.value]))
 
@@ -110,8 +96,9 @@ class MediaPipeSkeletonization(BaseSkeletonizationAlgorithm):
 
         # Check if there are fewer than two keypoints detected
         if len(indexes_present) < 2:
-            # self.internal_node.get_logger().info(
-            #     'Keypoints detected for the human are less than 2.')
             return True
 
         return False
+    
+    def are_keypoints_normalized(self) -> bool:
+        return True
