@@ -64,6 +64,36 @@ To launch the skeleton tracking system:
   ```
   This launch file initializes the necessary nodes for skeleton tracking.
 
+## Integrating sam-3d-body
+
+If you plan to integrate the sam-3d-body module into this package, you may find the following environment setup useful.
+1. Create a Dedicated Conda Environment
+  ```bash
+	conda create -n sam_3d_body python=3.10 -y
+	conda activate sam_3d_body
+  ```
+2. Automatically Add sam-3d-body to PYTHONPATH
+```bash
+	mkdir -p "$CONDA_PREFIX/etc/conda/activate.d"
+	mkdir -p "$CONDA_PREFIX/etc/conda/deactivate.d"
+```
+Add the repository to your environment’s PYTHONPATH:
+```bash
+	cat > "$CONDA_PREFIX/etc/conda/activate.d/sam_3d_body.sh" << 'EOF'
+	# Add the sam-3d-body repository to PYTHONPATH: 
+	export SAM_3D_BODY_ROOT="$HOME/path_to/sam-3d-body"
+	export PYTHONPATH="$SAM_3D_BODY_ROOT:$PYTHONPATH"
+	EOF
+```
+3. Install Colcon Inside the Conda Environment
+```bash
+	pip install colcon-common-extensions
+```
+4. Useful Debug Utility
+To quickly inspect the interpreter used by a node installed in another workspace:
+```bash
+	head -n 1 ~/projects/perception_ws/install/vision_system/lib/vision_system/vision_system_node
+```
 ## License
 
 This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for more details.
